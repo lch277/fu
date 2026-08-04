@@ -1,4 +1,5 @@
 import { ActionDock } from "./ActionDock";
+import { BoardCanvas } from "./BoardCanvas";
 import { EventFeed } from "./EventFeed";
 import { ModalLayer } from "./ModalLayer";
 import { PlayerRail } from "./PlayerRail";
@@ -27,6 +28,7 @@ export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenSt
           <div className="board-glow" />
           <div className="board-stage" aria-label="神州环游棋盘">
             <div className="map-water" />
+            <BoardCanvas state={state} events={events} />
             {state.map.nodes.map((node, index) => {
               const property = node.propertyId ? state.properties[node.propertyId] : null;
               return <div key={node.id} className={`map-node node-${node.type}`} style={{ left: `${node.x / 10}%`, top: `${node.y / 7}%`, "--node-index": index } as React.CSSProperties} title={node.name}>
