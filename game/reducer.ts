@@ -1,5 +1,7 @@
 import { createProperties, createStocks } from "./content";
+import { buyProperty, resolveLanding, upgradeProperty } from "./economy";
 import { mainlandMap } from "./map";
+import { endTurn, rollAndMove } from "./turn";
 import type {
   CommandResult,
   GameCommand,
@@ -53,6 +55,7 @@ export function createInitialState(config: GameConfig): GameState {
     stocks: createStocks(),
     hazards: [],
     lastRoll: null,
+    pending: null,
     eventLog: [],
     winnerIds: [],
   };
@@ -70,9 +73,27 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
     };
   }
 
-  return {
-    state,
-    events: [],
-    error: { code: "COMMAND_NOT_READY", message: "这个动作尚未开放" },
-  };
+  switch (command.type) {
+    case "ROLL_DICE":
+      return rollAndMove(state, command.playerId);
+    case "RESOLVE_LANDING":
+      return resolveLanding(state, command.playerId);
+    case "BUY_PROPERTY":
+      return buyProperty(state, command.playerId, command.propertyId);
+    case "UPGRADE_PROPERTY":
+      return upgradeProperty(state, command.playerId, command.propertyId);
+    case "SKIP_PURCHASE":
+      return {
+        state: { ...state, phase: "turn-end", pending: null },
+        events: [],
+      };
+    case "END_TURN":
+      return endTurn(state);
+    default:
+      return {
+        state,
+        events: [],
+        error: { code: "COMMAND_NOT_READY", message: "这个动作尚未开放" },
+      };
+  }
 }

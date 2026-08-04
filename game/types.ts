@@ -112,6 +112,11 @@ export interface RoadHazard {
   type: "roadblock" | "mine" | "bomb";
 }
 
+export type PendingDecision =
+  | { type: "purchase"; propertyId: string }
+  | { type: "upgrade"; propertyId: string }
+  | null;
+
 export interface GameState {
   version: 1;
   config: GameConfig;
@@ -128,12 +133,14 @@ export interface GameState {
   stocks: Record<string, StockState>;
   hazards: RoadHazard[];
   lastRoll: number | null;
+  pending: PendingDecision;
   eventLog: GameEvent[];
   winnerIds: PlayerId[];
 }
 
 export type GameCommand =
   | { type: "ROLL_DICE"; playerId: PlayerId }
+  | { type: "RESOLVE_LANDING"; playerId: PlayerId }
   | { type: "BUY_PROPERTY"; playerId: PlayerId; propertyId: string }
   | { type: "SKIP_PURCHASE"; playerId: PlayerId }
   | { type: "UPGRADE_PROPERTY"; playerId: PlayerId; propertyId: string }
@@ -160,6 +167,13 @@ export interface CommandResult {
   state: GameState;
   events: GameEvent[];
   error?: CommandError;
+}
+
+export interface LegalAction {
+  type: GameCommand["type"];
+  label: string;
+  enabled: boolean;
+  reason?: string;
 }
 
 export interface SeededRng {
