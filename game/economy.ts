@@ -1,4 +1,5 @@
 import type { CommandResult, GameEvent, GameState, PlayerId } from "./types";
+import { resolveSpecialSpace } from "./effects";
 
 const levelMultipliers = [1, 2, 3.5, 5.5, 8, 12];
 
@@ -106,14 +107,7 @@ export function resolveLanding(state: GameState, playerId: PlayerId): CommandRes
     return { state: paidState, events: [paidEvent] };
   }
 
-  const special: GameEvent = {
-    id: `${state.turn}-SPACE_RESOLVED-0`,
-    type: "SPACE_RESOLVED",
-    message: `${player.name}来到${node.name}`,
-    playerId,
-    data: { nodeId: node.id, nodeType: node.type },
-  };
-  return append(state, [special], { phase: "turn-end", pending: null });
+  return resolveSpecialSpace(state, playerId);
 }
 
 export function buyProperty(state: GameState, playerId: PlayerId, propertyId: string): CommandResult {

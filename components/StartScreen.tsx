@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CharacterId, GameConfig, PlayerSetup } from "@/game/types";
+import type { CharacterId, GameConfig, PlayerKind, PlayerSetup } from "@/game/types";
 
 const characters: Array<{ id: CharacterId; name: string; mark: string; color: string; caption: string }> = [
   { id: "sun-xiaomei", name: "孙小美", mark: "美", color: "#f05278", caption: "好运常伴" },
@@ -19,6 +19,11 @@ interface StartScreenProps {
 export function StartScreen({ onStart, canContinue, onContinue }: StartScreenProps) {
   const [mode, setMode] = useState<"quick" | "standard">("quick");
   const [count, setCount] = useState(2);
+  const [seatKinds, setSeatKinds] = useState<PlayerKind[]>(["human", "ai", "ai", "ai"]);
+
+  function toggleSeat(index: number) {
+    setSeatKinds((current) => current.map((kind, seat) => seat === index ? (kind === "human" ? "ai" : "human") : kind));
+  }
 
   function start() {
     const players: PlayerSetup[] = characters.slice(0, count).map((character, index) => ({
@@ -26,8 +31,8 @@ export function StartScreen({ onStart, canContinue, onContinue }: StartScreenPro
       name: character.name,
       character: character.id,
       color: character.color,
-      kind: index === 0 ? "human" : "ai",
-      difficulty: index === 0 ? undefined : index === count - 1 && count > 2 ? "smart" : "standard",
+      kind: seatKinds[index],
+      difficulty: seatKinds[index] === "human" ? undefined : index === count - 1 && count > 2 ? "smart" : "standard",
     }));
     onStart({
       mode,
@@ -67,10 +72,10 @@ export function StartScreen({ onStart, canContinue, onContinue }: StartScreenPro
           </div>
           <div className="roster-preview">
             {characters.slice(0, count).map((character, index) => (
-              <div className="roster-chip" key={character.id} style={{ "--player-color": character.color } as React.CSSProperties}>
+              <button type="button" className="roster-chip" key={character.id} style={{ "--player-color": character.color } as React.CSSProperties} onClick={() => toggleSeat(index)} aria-label={`将${character.name}切换为${seatKinds[index] === "human" ? "AI" : "真人"}`}>
                 <span className="mini-avatar">{character.mark}</span>
-                <span><b>{character.name}</b><small>{index === 0 ? "真人" : "AI · " + character.caption}</small></span>
-              </div>
+                <span><b>{character.name}</b><small>{seatKinds[index] === "human" ? "真人 · 本地操作" : "AI · " + character.caption}</small></span>
+              </button>
             ))}
           </div>
           <div className="start-actions">

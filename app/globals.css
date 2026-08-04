@@ -47,7 +47,8 @@ button:focus-visible { outline: 3px solid white; outline-offset: 3px; box-shadow
 .segmented button.active { color: var(--navy); background: var(--cream); box-shadow: 0 3px 9px rgba(36,50,74,.16); }
 .player-count { grid-template-columns: repeat(3, 1fr); }
 .roster-preview { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 17px 0; }
-.roster-chip { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.56); }
+.roster-chip { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px; border: 1px solid rgba(255,255,255,.64); border-radius: 12px; background: rgba(255,255,255,.56); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.roster-chip:hover,.roster-chip:focus-visible{transform:translateY(-1px);background:#fff;box-shadow:0 7px 16px rgba(37,64,85,.1)}
 .mini-avatar { flex: 0 0 38px; width: 38px; height: 38px; border: 3px solid white; border-radius: 50% 50% 45% 45%; display: grid; place-items: center; color: white; background: var(--player-color); font-family: var(--font-display); font-weight: 900; box-shadow: 0 3px 0 color-mix(in srgb, var(--player-color), black 24%); }
 .roster-chip b, .roster-chip small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .roster-chip b { font-size: 12px; }.roster-chip small { margin-top: 2px; color: #71808b; font-size: 9px; }
@@ -103,6 +104,11 @@ button:focus-visible { outline: 3px solid white; outline-offset: 3px; box-shadow
 @keyframes fade-in{from{opacity:0}}
 @keyframes pop-in{from{opacity:0;transform:scale(.82) translateY(25px)}}
 @keyframes drawer-in{from{transform:translateX(100%)}}
+.settings-drawer{width:min(410px,90vw)}
+.settings-section{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:10px 0;padding:17px;border:1px solid #e5ddcf;border-radius:17px;background:white}
+.settings-section b,.settings-section small{display:block}.settings-section b{font-size:13px}.settings-section small{max-width:190px;margin-top:4px;color:#819098;font-size:9px;line-height:1.45}
+.settings-options{display:flex;padding:3px;border-radius:11px;background:#ece6da}.settings-options button,.sound-toggle{border:0;border-radius:9px;padding:8px 10px;color:#697781;background:transparent;font:900 10px var(--font-ui);cursor:pointer}.settings-options button.active,.sound-toggle.active{color:white;background:var(--teal);box-shadow:0 3px 0 #36858c}.sound-toggle{white-space:nowrap;background:#e7e2d8}
+.settings-note{margin:20px 3px;color:#7d8a91;font-size:10px}.exit-game-button{width:100%;padding:13px;border:1px solid #d4c8b8;border-radius:13px;color:var(--navy);background:transparent;font:900 11px var(--font-ui);cursor:pointer}.exit-game-button:hover{background:#fff}
 
 @media (max-width: 1100px) {
   .start-screen{grid-template-columns:minmax(390px,.9fr) minmax(430px,1.1fr);padding:36px}.start-copy h1{font-size:64px;-webkit-text-stroke-width:7px}.board-hero{min-height:620px}.game-layout{grid-template-columns:minmax(0,1fr) 230px}.player-card{grid-template-columns:19px 37px 1fr;padding:8px}.player-avatar{width:36px;height:39px}.player-money strong{font-size:11px}.player-money small{font-size:7px}

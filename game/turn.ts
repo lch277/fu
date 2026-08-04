@@ -1,4 +1,6 @@
 import { createRng } from "./rng";
+import { tickStatuses } from "./effects";
+import { advanceMarket } from "./stocks";
 import type { CommandResult, GameEvent, GameState, PlayerId } from "./types";
 
 function event(state: GameState, type: string, message: string, index: number, amount?: number): GameEvent {
@@ -85,8 +87,7 @@ export function endTurn(state: GameState): CommandResult {
     playerId: nextId,
   };
 
-  return {
-    state: {
+  const nextState: GameState = {
       ...state,
       round: nextRound,
       turn: state.turn + 1,
@@ -95,7 +96,10 @@ export function endTurn(state: GameState): CommandResult {
       lastRoll: null,
       pending: null,
       eventLog: [...state.eventLog, started],
-    },
-    events: [started],
   };
+  const statusResult = tickStatuses(nextState, nextId);
+  if (!wrapped) return { state: statusResult.state, events: [started, ...statusResult.events] };
+
+  const marketResult = advanceMarket(statusResult.state);
+  return { state: marketResult.state, events: [started, ...statusResult.events, ...marketResult.events] };
 }

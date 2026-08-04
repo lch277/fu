@@ -11,9 +11,10 @@ interface GameScreenProps {
   onCommand(command: GameCommand): void;
   onOpenInventory(): void;
   onOpenStocks(): void;
+  onOpenSettings?(): void;
 }
 
-export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenStocks }: GameScreenProps) {
+export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenStocks, onOpenSettings }: GameScreenProps) {
   const current = state.players[state.currentPlayerId];
   return (
     <main className="game-screen">
@@ -21,7 +22,7 @@ export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenSt
         <div className="compact-logo"><span>神州</span><b>大富翁</b></div>
         <div className="turn-ticket"><small>当前行动</small><b>{current.name}</b><span style={{ background: current.color }} /></div>
         <div className="round-info"><span>第 {state.round} 轮</span><small>目标 ¥{state.config.targetNetWorth.toLocaleString("zh-CN")}</small></div>
-        <button className="settings-button" aria-label="游戏设置">⚙</button>
+        <button className="settings-button" aria-label="游戏设置" onClick={onOpenSettings}>⚙</button>
       </header>
       <section className="game-layout">
         <div className="board-shell">

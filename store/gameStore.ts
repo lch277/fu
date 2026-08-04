@@ -5,6 +5,8 @@ import { applyEffect } from "@/game/effects";
 import { createInitialState, dispatchCommand } from "@/game/reducer";
 import { loadGame, saveGame } from "@/game/save";
 import { tradeStock } from "@/game/stocks";
+import { playEventSound } from "@/game/audio";
+import type { UiSettings } from "@/components/SettingsDrawer";
 import type { EffectRequest, GameCommand, GameConfig, GameEvent, GameState, StockOrder } from "@/game/types";
 
 interface GameStore {
@@ -13,6 +15,8 @@ interface GameStore {
   events: GameEvent[];
   inventoryOpen: boolean;
   stocksOpen: boolean;
+  settingsOpen: boolean;
+  settings: UiSettings;
   error: string | null;
   start(config: GameConfig): void;
   continueGame(): void;
@@ -22,6 +26,9 @@ interface GameStore {
   trade(order: StockOrder): void;
   setInventory(open: boolean): void;
   setStocks(open: boolean): void;
+  setSettingsOpen(open: boolean): void;
+  setSettings(settings: UiSettings): void;
+  exitToStart(): void;
 }
 
 function persisted(state: GameState, events: GameEvent[]) {
@@ -35,6 +42,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   events: [],
   inventoryOpen: false,
   stocksOpen: false,
+  settingsOpen: false,
+  settings: { sound: true, speed: 1 },
   error: null,
   start(config) {
     const state = createInitialState(config);
@@ -54,6 +63,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (result.error) set({ error: result.error.message });
     else {
       saveGame("auto", result.state);
+      playEventSound(result.events, get().settings.sound);
       set({ game: result.state, events: [...get().events, ...result.events].slice(-12), scene: result.state.phase === "game-over" ? "result" : "game", error: null });
     }
   },
@@ -62,15 +72,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!game) return;
     const result = applyEffect(game, request);
     if (result.error) set({ error: result.error.message });
-    else { saveGame("auto", result.state); set({ game: result.state, events: [...get().events, ...result.events].slice(-12), inventoryOpen: false, error: null }); }
+    else { saveGame("auto", result.state); playEventSound(result.events, get().settings.sound); set({ game: result.state, events: [...get().events, ...result.events].slice(-12), inventoryOpen: false, error: null }); }
   },
   trade(order) {
     const game = get().game;
     if (!game) return;
     const result = tradeStock(game, order);
     if (result.error) set({ error: result.error.message });
-    else { saveGame("auto", result.state); set({ game: result.state, events: [...get().events, ...result.events].slice(-12), error: null }); }
+    else { saveGame("auto", result.state); playEventSound(result.events, get().settings.sound); set({ game: result.state, events: [...get().events, ...result.events].slice(-12), error: null }); }
   },
-  setInventory(open) { set({ inventoryOpen: open, stocksOpen: false }); },
-  setStocks(open) { set({ stocksOpen: open, inventoryOpen: false }); },
+  setInventory(open) { set({ inventoryOpen: open, stocksOpen: false, settingsOpen: false }); },
+  setStocks(open) { set({ stocksOpen: open, inventoryOpen: false, settingsOpen: false }); },
+  setSettingsOpen(open) { set({ settingsOpen: open, inventoryOpen: false, stocksOpen: false }); },
+  setSettings(settings) {
+    if (typeof window !== "undefined") window.localStorage.setItem("richman-ui-settings", JSON.stringify(settings));
+    set({ settings });
+  },
+  exitToStart() { set({ scene: "start", settingsOpen: false, inventoryOpen: false, stocksOpen: false }); },
 }));
