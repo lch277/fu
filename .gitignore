@@ -1,0 +1,10 @@
+.superpowers/
+.worktrees/
+node_modules/
+dist/
+.vinext/
+coverage/
+playwright-report/
+test-results/
+.env*
+!.env.example
