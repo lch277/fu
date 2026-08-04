@@ -3,8 +3,12 @@
 node_modules/
 dist/
 .vinext/
+.next/
+.wrangler/
 coverage/
 playwright-report/
 test-results/
+dev-server*.log
+dev-server*.err
 .env*
 !.env.example
