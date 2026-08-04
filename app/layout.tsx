@@ -1,25 +1,24 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Starter Project",
-  description: "A clean starting point for building your site.",
-  icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const incoming = await headers();
+  const host = incoming.get("host") ?? "localhost:3000";
+  const protocol = incoming.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  const metadataBase = new URL(`${protocol}://${host}`);
+  return {
+    metadataBase,
+    title: "神州大富翁｜掷出你的财富传奇",
+    description: "高清手办风的本地多人经营游戏：买地产、炒股票、用卡片，与好友或 AI 环游神州。",
+    openGraph: {
+      title: "神州大富翁",
+      description: "掷出你的财富传奇",
+      images: [{ url: new URL("/og.png", metadataBase).toString(), width: 1733, height: 909, alt: "神州大富翁游戏棋盘" }],
+    },
+    twitter: { card: "summary_large_image", title: "神州大富翁", description: "掷出你的财富传奇", images: [new URL("/og.png", metadataBase).toString()] },
+  };
+}
 
 export default function RootLayout({
   children,
@@ -27,12 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+    <html lang="zh-CN">
+      <body>{children}</body>
     </html>
   );
 }
