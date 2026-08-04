@@ -176,6 +176,25 @@ export interface LegalAction {
   reason?: string;
 }
 
+export type TargetRef =
+  | { type: "player"; id: PlayerId }
+  | { type: "property"; id: string }
+  | { type: "road"; id: string }
+  | { type: "stock"; id: string };
+
+export interface EffectRequest {
+  playerId: PlayerId;
+  effectId: string;
+  target: TargetRef;
+}
+
+export interface ContentDefinition {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+}
+
 export interface SeededRng {
   readonly state: number;
   nextFloat(): number;
