@@ -105,6 +105,13 @@ export interface StockState {
   companyPropertyId: string | null;
 }
 
+export interface StockOrder {
+  playerId: PlayerId;
+  stockId: string;
+  quantity: number;
+  side: "buy" | "sell";
+}
+
 export interface RoadHazard {
   id: string;
   nodeId: string;

@@ -1,6 +1,7 @@
 import { createProperties, createStocks } from "./content";
 import { buyProperty, resolveLanding, upgradeProperty } from "./economy";
 import { mainlandMap } from "./map";
+import { tradeStock } from "./stocks";
 import { endTurn, rollAndMove } from "./turn";
 import type {
   CommandResult,
@@ -89,6 +90,10 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       };
     case "END_TURN":
       return endTurn(state);
+    case "BUY_STOCK":
+      return tradeStock(state, { playerId: command.playerId, stockId: command.stockId, quantity: command.quantity, side: "buy" });
+    case "SELL_STOCK":
+      return tradeStock(state, { playerId: command.playerId, stockId: command.stockId, quantity: command.quantity, side: "sell" });
     default:
       return {
         state,
