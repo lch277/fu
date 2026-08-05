@@ -61,6 +61,26 @@ describe("本地存档", () => {
     }
   });
 
+  it("拒绝玩家引用不存在或不属于自己的地产", () => {
+    const state = createInitialState(config);
+    const missingProperty = {
+      ...state,
+      players: { ...state.players, p1: { ...state.players.p1, propertyIds: ["ghost-land"] } },
+    };
+    const wrongOwner = {
+      ...state,
+      properties: { ...state.properties, tianjin: { ...state.properties.tianjin, ownerId: "p2" } },
+      players: {
+        ...state.players,
+        p1: { ...state.players.p1, propertyIds: ["tianjin"] },
+        p2: { ...state.players.p2, propertyIds: ["tianjin"] },
+      },
+    };
+
+    expect(parseSave(JSON.stringify({ schemaVersion: 1, savedAt: new Date().toISOString(), state: missingProperty })).ok).toBe(false);
+    expect(parseSave(JSON.stringify({ schemaVersion: 1, savedAt: new Date().toISOString(), state: wrongOwner })).ok).toBe(false);
+  });
+
   it("自动槽和手动槽可以分别保存并读取", () => {
     const state = createInitialState(config);
     saveGame("auto", state);

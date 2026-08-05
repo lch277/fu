@@ -11,6 +11,12 @@ interface BoardCanvasProps {
   animationSpeed?: 1 | 2 | 4;
 }
 
+export function collectUnplayedEvents(events: GameEvent[], playedIds: Set<string>): GameEvent[] {
+  const unseen = events.filter((event) => !playedIds.has(event.id));
+  unseen.forEach((event) => playedIds.add(event.id));
+  return unseen;
+}
+
 const colors = [0x73d5dc, 0x8bd38d, 0xffc95b, 0xf16482, 0x7868c9];
 
 export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasProps) {
@@ -18,7 +24,7 @@ export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasPr
   const stateRef = useRef(state);
   const eventsRef = useRef(events);
   const speedRef = useRef(animationSpeed);
-  const seenEventRef = useRef<string | null>(null);
+  const playedEventIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     stateRef.current = state;
@@ -129,8 +135,8 @@ export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasPr
       observer = new ResizeObserver(redraw);
       observer.observe(host);
       (host as HTMLDivElement & { replay?: (items: GameEvent[]) => void }).replay = pulse;
-      const latest = eventsRef.current.at(-1);
-      if (latest) pulse(eventsRef.current.slice(-8));
+      const pendingEvents = collectUnplayedEvents(eventsRef.current, playedEventIdsRef.current);
+      if (pendingEvents.length) pulse(pendingEvents);
     });
 
     return () => {
@@ -149,11 +155,10 @@ export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasPr
 
   useEffect(() => {
     eventsRef.current = events;
-    const latest = events.at(-1);
-    if (!latest || latest.id === seenEventRef.current) return;
-    seenEventRef.current = latest.id;
     const host = hostRef.current as (HTMLDivElement & { replay?: (items: GameEvent[]) => void }) | null;
-    host?.replay?.(events.slice(-8));
+    if (!host?.replay) return;
+    const unseen = collectUnplayedEvents(events, playedEventIdsRef.current);
+    if (unseen.length) host.replay(unseen);
   }, [events]);
 
   return <div className="board-canvas" ref={hostRef} />;

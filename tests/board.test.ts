@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mainlandMap } from "@/game/map";
 import { buildAnimationPlan, createBoardGeometry } from "@/render/boardGeometry";
+import { collectUnplayedEvents } from "@/components/BoardCanvas";
 
 describe("棋盘渲染几何", () => {
   it("将 32 个站点归一化并闭合为环线", () => {
@@ -21,5 +22,18 @@ describe("棋盘渲染几何", () => {
 
     expect(plan.map((item) => item.kind)).toEqual(["dice", "step", "celebrate"]);
     expect(plan[1]).toMatchObject({ nodeId: "beijing-1", delay: 140 });
+  });
+});
+
+describe("动画事件队列", () => {
+  it("只消费尚未播放的新事件", () => {
+    const played = new Set(["e1"]);
+    const events = [
+      { id: "e1", type: "DICE_ROLLED", message: "旧骰子" },
+      { id: "e2", type: "PLAYER_STEPPED", message: "新移动" },
+    ];
+
+    expect(collectUnplayedEvents(events, played).map((event) => event.id)).toEqual(["e2"]);
+    expect(collectUnplayedEvents(events, played)).toEqual([]);
   });
 });

@@ -56,7 +56,7 @@ function isGameState(value: unknown): value is GameState {
     const player = state.players[id] as GameState["players"][string];
     if (player.id !== id || typeof player.name !== "string" || typeof player.cash !== "number" || !Number.isFinite(player.cash) || typeof player.active !== "boolean" || !nodeIds.has(player.position)) return false;
     if (!Array.isArray(player.propertyIds) || !Array.isArray(player.cards) || !Array.isArray(player.tools) || !Array.isArray(player.statuses) || !record(player.stocks)) return false;
-    if (!player.propertyIds.every((propertyId) => typeof propertyId === "string") || !player.cards.every((card) => typeof card === "string") || !player.tools.every((tool) => typeof tool === "string")) return false;
+    if (!player.propertyIds.every((propertyId) => typeof propertyId === "string" && state.properties![propertyId]?.ownerId === id) || !player.cards.every((card) => typeof card === "string") || !player.tools.every((tool) => typeof tool === "string")) return false;
     if (!Object.values(player.stocks).every((quantity) => nonNegativeInteger(quantity))) return false;
     if (!player.statuses.every((status) => status && typeof status.id === "string" && typeof status.name === "string" && nonNegativeInteger(status.remainingTurns) && ["positive", "negative", "neutral"].includes(status.tone))) return false;
     if (player.god !== null && (!record(player.god) || typeof player.god.id !== "string" || typeof player.god.name !== "string" || !nonNegativeInteger(player.god.remainingTurns) || !["positive", "negative"].includes(player.god.tone))) return false;
