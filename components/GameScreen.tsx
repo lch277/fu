@@ -12,9 +12,10 @@ interface GameScreenProps {
   onOpenInventory(): void;
   onOpenStocks(): void;
   onOpenSettings?(): void;
+  animationSpeed?: 1 | 2 | 4;
 }
 
-export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenStocks, onOpenSettings }: GameScreenProps) {
+export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenStocks, onOpenSettings, animationSpeed = 1 }: GameScreenProps) {
   const current = state.players[state.currentPlayerId];
   return (
     <main className="game-screen">
@@ -29,7 +30,7 @@ export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenSt
           <div className="board-glow" />
           <div className="board-stage" aria-label="神州环游棋盘">
             <div className="map-water" />
-            <BoardCanvas state={state} events={events} />
+            <BoardCanvas state={state} events={events} animationSpeed={animationSpeed} />
             {state.map.nodes.map((node, index) => {
               const property = node.propertyId ? state.properties[node.propertyId] : null;
               return <div key={node.id} className={`map-node node-${node.type}`} style={{ left: `${node.x / 10}%`, top: `${node.y / 7}%`, "--node-index": index } as React.CSSProperties} title={node.name}>

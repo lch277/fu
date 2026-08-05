@@ -3,18 +3,21 @@
 import { useEffect, useRef } from "react";
 import { buildAnimationPlan, createBoardGeometry } from "@/render/boardGeometry";
 import type { GameEvent, GameState } from "@/game/types";
+import type { Application } from "pixi.js";
 
 interface BoardCanvasProps {
   state: GameState;
   events: GameEvent[];
+  animationSpeed?: 1 | 2 | 4;
 }
 
 const colors = [0x73d5dc, 0x8bd38d, 0xffc95b, 0xf16482, 0x7868c9];
 
-export function BoardCanvas({ state, events }: BoardCanvasProps) {
+export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
   const eventsRef = useRef(events);
+  const speedRef = useRef(animationSpeed);
   const seenEventRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -22,20 +25,26 @@ export function BoardCanvas({ state, events }: BoardCanvasProps) {
   }, [state]);
 
   useEffect(() => {
+    speedRef.current = animationSpeed;
+  }, [animationSpeed]);
+
+  useEffect(() => {
     const host = hostRef.current;
     if (!host || navigator.userAgent.includes("jsdom")) return;
     let disposed = false;
     let observer: ResizeObserver | null = null;
     let cancelPulse: (() => void) | null = null;
+    let pixiApp: Application | null = null;
 
     void import("pixi.js").then(async ({ Application, Container, Graphics }) => {
       if (disposed) return;
       const app = new Application();
       await app.init({ resizeTo: host, antialias: true, backgroundAlpha: 0, resolution: Math.min(window.devicePixelRatio, 2) });
       if (disposed) {
-        app.destroy(true);
+        app.destroy({ removeView: true }, { children: true });
         return;
       }
+      pixiApp = app;
       app.canvas.setAttribute("aria-hidden", "true");
       host.appendChild(app.canvas);
 
@@ -84,6 +93,7 @@ export function BoardCanvas({ state, events }: BoardCanvasProps) {
 
       const pulse = (eventBatch: GameEvent[]) => {
         cancelPulse?.();
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
         const plan = buildAnimationPlan(eventBatch);
         const timers: number[] = [];
         const geometry = createBoardGeometry(stateRef.current.map);
@@ -109,7 +119,7 @@ export function BoardCanvas({ state, events }: BoardCanvasProps) {
               }
             };
             app.ticker.add(tick);
-          }, item.delay);
+          }, item.delay / speedRef.current);
           timers.push(timer);
         });
         cancelPulse = () => timers.forEach(window.clearTimeout);
@@ -127,7 +137,13 @@ export function BoardCanvas({ state, events }: BoardCanvasProps) {
       disposed = true;
       observer?.disconnect();
       cancelPulse?.();
-      host.replaceChildren();
+      (host as HTMLDivElement & { replay?: (items: GameEvent[]) => void }).replay = undefined;
+      if (pixiApp) {
+        pixiApp.destroy({ removeView: true }, { children: true });
+        pixiApp = null;
+      } else {
+        host.replaceChildren();
+      }
     };
   }, []);
 

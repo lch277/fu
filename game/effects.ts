@@ -34,6 +34,13 @@ export function getEffectTargets(state: GameState, effectId: string, playerId: P
   if (effectId === "send-god-card") {
     return player.god ? [{ type: "player", id: playerId }] : [];
   }
+  if (effectId === "swap-card") {
+    if (!player.propertyIds.length) return [];
+    return Object.values(state.properties).filter((property) => property.ownerId && property.ownerId !== playerId).map((property) => ({ type: "property" as const, id: property.id }));
+  }
+  if (effectId === "remodel-card") {
+    return player.propertyIds.map((id) => ({ type: "property" as const, id }));
+  }
   if (["stop-card", "tax-card", "equal-poor-card", "devil-card", "turn-card"].includes(effectId)) {
     return state.turnOrder
       .filter((id) => id !== playerId && state.players[id].active)
@@ -121,6 +128,39 @@ export function applyEffect(state: GameState, request: EffectRequest): CommandRe
       events.push(makeEvent(state, "TAX_COLLECTED", `${actor.name}向${targetPlayer!.name}查税`, actor.id, tax));
       break;
     }
+    case "equal-poor-card": {
+      const average = Math.floor((consumed.cash + targetPlayer!.cash) / 2);
+      players = {
+        ...players,
+        [request.playerId]: { ...consumed, cash: average },
+        [targetPlayer!.id]: { ...targetPlayer!, cash: average },
+      };
+      events.push(makeEvent(state, "CASH_EQUALIZED", `${actor.name}与${targetPlayer!.name}的现金被平均`, actor.id));
+      break;
+    }
+    case "swap-card": {
+      const targetProperty = properties[request.target.id];
+      const ownProperty = properties[actor.propertyIds[0]];
+      const targetOwner = state.players[targetProperty.ownerId!];
+      properties = {
+        ...properties,
+        [ownProperty.id]: { ...ownProperty, ownerId: targetOwner.id },
+        [targetProperty.id]: { ...targetProperty, ownerId: actor.id },
+      };
+      players = {
+        ...players,
+        [actor.id]: { ...consumed, propertyIds: actor.propertyIds.map((id) => id === ownProperty.id ? targetProperty.id : id) },
+        [targetOwner.id]: { ...targetOwner, propertyIds: targetOwner.propertyIds.map((id) => id === targetProperty.id ? ownProperty.id : id) },
+      };
+      events.push(makeEvent(state, "PROPERTIES_SWAPPED", `${actor.name}与${targetOwner.name}交换地产`, actor.id));
+      break;
+    }
+    case "remodel-card": {
+      const property = properties[request.target.id];
+      properties = { ...properties, [property.id]: { ...property, level: Math.min(property.maxLevel, property.level + 1) } };
+      events.push(makeEvent(state, "PROPERTY_REMODELED", `${property.name}完成改建`, actor.id));
+      break;
+    }
     case "equal-rich-card": {
       const active = state.turnOrder.filter((id) => state.players[id].active);
       const average = Math.floor(active.reduce((sum, id) => sum + state.players[id].cash, 0) / active.length);
@@ -160,6 +200,12 @@ export function applyEffect(state: GameState, request: EffectRequest): CommandRe
       const forward = new Set(Array.from({ length: 6 }, (_, index) => state.map.nodes[(currentIndex + index + 1) % state.map.nodes.length].id));
       hazards = hazards.filter((hazard) => !forward.has(hazard.nodeId));
       events.push(makeEvent(state, "ROAD_CLEARED", "机器娃娃清除了前方障碍", actor.id));
+      break;
+    }
+    case "turn-card": {
+      const status = { id: "reversed", name: "反向行进", remainingTurns: 1, tone: "negative" as const };
+      players = { ...players, [targetPlayer!.id]: { ...targetPlayer!, statuses: [...targetPlayer!.statuses.filter((item) => item.id !== status.id), status] } };
+      events.push(makeEvent(state, "STATUS_ADDED", `${targetPlayer!.name}下一次将反向行进`, targetPlayer!.id));
       break;
     }
     case "remote-die":
@@ -203,8 +249,9 @@ export function tickStatuses(state: GameState, playerId: PlayerId): CommandResul
     god = god.remainingTurns <= 1 ? null : { ...god, remainingTurns: god.remainingTurns - 1 };
     if (!god) events.push(makeEvent(state, "GOD_LEFT", "附身神仙离开了", playerId));
   }
+  const usedOnAction = new Set(["reversed", "remote-die", "motorbike", "car", "immunity", "revenge"]);
   const statuses = player.statuses
-    .map((status) => ({ ...status, remainingTurns: status.remainingTurns - 1 }))
+    .map((status) => usedOnAction.has(status.id) ? status : { ...status, remainingTurns: status.remainingTurns - 1 })
     .filter((status) => status.remainingTurns > 0);
 
   return finish(state, events, {
@@ -238,8 +285,14 @@ export function resolveSpecialSpace(state: GameState, playerId: PlayerId): Comma
     message = `获得一张${item.name}`;
   } else if (node.type === "hospital" || node.type === "jail") {
     const id = node.type === "hospital" ? "hospitalized" : "jailed";
-    statuses = [...statuses, { id, name: node.type === "hospital" ? "住院" : "坐牢", remainingTurns: 2, tone: "negative" }];
-    message = node.type === "hospital" ? "需要住院两回合" : "需要停留两回合";
+    const immune = statuses.find((status) => status.id === "immunity");
+    if (immune) {
+      statuses = statuses.filter((status) => status !== immune);
+      message = `免罪效果抵消了${node.type === "hospital" ? "住院" : "坐牢"}`;
+    } else {
+      statuses = [...statuses, { id, name: node.type === "hospital" ? "住院" : "坐牢", remainingTurns: 2, tone: "negative" }];
+      message = node.type === "hospital" ? "需要住院两回合" : "需要停留两回合";
+    }
   } else if (node.type === "lottery") {
     amount = 800;
     cash += amount;

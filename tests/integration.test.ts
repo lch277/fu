@@ -51,4 +51,80 @@ describe("完整回合联动", () => {
     expect(result.events.some((event) => event.type === "GOD_CASH")).toBe(true);
     expect(result.events.some((event) => event.type === "STOCK_CHANGED")).toBe(true);
   });
+
+  it("达到目标资产后在结束回合时立即结算胜利", () => {
+    const base = createInitialState(config);
+    const state: GameState = {
+      ...base,
+      phase: "turn-end",
+      players: { ...base.players, p1: { ...base.players.p1, cash: config.targetNetWorth + 1 } },
+    };
+
+    const result = dispatchCommand(state, { type: "END_TURN", playerId: "p1" });
+
+    expect(result.state.phase).toBe("game-over");
+    expect(result.state.winnerIds).toEqual(["p1"]);
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "TARGET_REACHED" }));
+  });
+
+  it("停留状态会跳过目标玩家的行动并消耗一回合", () => {
+    const base = createInitialState(config);
+    const state: GameState = {
+      ...base,
+      phase: "turn-end",
+      players: {
+        ...base.players,
+        p2: { ...base.players.p2, statuses: [{ id: "stopped", name: "原地停留", remainingTurns: 1, tone: "negative" }] },
+      },
+    };
+
+    const result = dispatchCommand(state, { type: "END_TURN", playerId: "p1" });
+
+    expect(result.state.currentPlayerId).toBe("p1");
+    expect(result.state.round).toBe(2);
+    expect(result.state.players.p2.statuses).toEqual([]);
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "TURN_SKIPPED", playerId: "p2" }));
+  });
+
+  it("踩中路障后立刻停止并移除障碍", () => {
+    const base = createInitialState({ ...config, seed: 1 });
+    const state: GameState = {
+      ...base,
+      hazards: [{ id: "h1", nodeId: "beijing-1", ownerId: "p2", type: "roadblock" }],
+    };
+
+    const result = dispatchCommand(state, { type: "ROLL_DICE", playerId: "p1" });
+
+    expect(result.state.players.p1.position).toBe("beijing-1");
+    expect(result.state.hazards).toEqual([]);
+    expect(result.state.phase).toBe("turn-end");
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "HAZARD_TRIGGERED" }));
+  });
+
+  it("经过出发站会获得通行奖金", () => {
+    const base = createInitialState({ ...config, seed: 1 });
+    const state: GameState = { ...base, players: { ...base.players, p1: { ...base.players.p1, position: "shop-3" } } };
+    const result = dispatchCommand(state, { type: "ROLL_DICE", playerId: "p1" });
+
+    expect(result.state.players.p1.cash).toBe(30_000);
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "START_BONUS", amount: 2_000 }));
+  });
+
+  it("中间席位破产后会推进到原顺序中的下一位", () => {
+    const threePlayerConfig: GameConfig = {
+      ...config,
+      players: [...config.players, { id: "p3", name: "钱夫人", character: "qian-furen", kind: "human", color: "#8f6bd8" }],
+    };
+    const base = createInitialState(threePlayerConfig);
+    const state: GameState = {
+      ...base,
+      currentPlayerId: "p2",
+      phase: "turn-end",
+      players: { ...base.players, p2: { ...base.players.p2, active: false, cash: 0 } },
+    };
+    const result = dispatchCommand(state, { type: "END_TURN", playerId: "p2" });
+
+    expect(result.state.currentPlayerId).toBe("p3");
+    expect(result.state.round).toBe(1);
+  });
 });

@@ -1,6 +1,7 @@
 import { createRng } from "./rng";
 import { tickStatuses } from "./effects";
 import { advanceMarket } from "./stocks";
+import { getNetWorth } from "./selectors";
 import type { CommandResult, GameEvent, GameState, PlayerId } from "./types";
 
 function event(state: GameState, type: string, message: string, index: number, amount?: number): GameEvent {
@@ -17,18 +18,43 @@ export function rollAndMove(state: GameState, playerId: PlayerId): CommandResult
   }
 
   const rng = createRng(state.rngState);
-  const roll = rng.die();
+  const player = state.players[playerId];
+  const hasStatus = (id: string) => player.statuses.some((status) => status.id === id);
+  const diceCount = hasStatus("car") ? 3 : hasStatus("motorbike") ? 2 : 1;
+  const rolls = Array.from({ length: diceCount }, (_, index) => hasStatus("remote-die") && index === 0 ? 6 : rng.die());
+  const roll = rolls.reduce((sum, value) => sum + value, 0);
   const nodeById = new Map(state.map.nodes.map((node) => [node.id, node]));
-  let position = state.players[playerId].position;
-  const events: GameEvent[] = [event(state, "DICE_ROLLED", `掷出了 ${roll} 点`, 0, roll)];
+  let position = player.position;
+  let cash = player.cash;
+  let hazards = state.hazards;
+  let statuses = player.statuses.filter((status) => !["car", "motorbike", "remote-die", "reversed"].includes(status.id));
+  let hazardTriggered = false;
+  const reversed = hasStatus("reversed");
+  const events: GameEvent[] = [event(state, "DICE_ROLLED", diceCount > 1 ? `${diceCount} 颗骰子共 ${roll} 点` : `掷出了 ${roll} 点`, 0, roll)];
 
   for (let step = 0; step < roll; step += 1) {
-    const node = nodeById.get(position);
-    position = node?.next[0] ?? state.map.nodes[0].id;
+    const currentIndex = state.map.nodes.findIndex((node) => node.id === position);
+    const nextIndex = (currentIndex + (reversed ? -1 : 1) + state.map.nodes.length) % state.map.nodes.length;
+    position = state.map.nodes[nextIndex]?.id ?? state.map.nodes[0].id;
+    if (position === state.map.nodes[0].id) {
+      cash += 2_000;
+      events.push(event(state, "START_BONUS", "经过出发站，获得 ¥2,000", events.length, 2_000));
+    }
     events.push({
-      ...event(state, "PLAYER_STEPPED", `前进到${nodeById.get(position)?.name ?? "下一站"}`, step + 1),
+      ...event(state, "PLAYER_STEPPED", `${reversed ? "后退" : "前进"}到${nodeById.get(position)?.name ?? "下一站"}`, events.length),
       data: { nodeId: position, step: step + 1 },
     });
+    const hazard = hazards.find((item) => item.nodeId === position && item.ownerId !== playerId);
+    if (hazard) {
+      hazards = hazards.filter((item) => item.id !== hazard.id);
+      if (hazard.type === "mine" || hazard.type === "bomb") {
+        const turns = hazard.type === "bomb" ? 3 : 2;
+        statuses = [...statuses.filter((status) => status.id !== "hospitalized"), { id: "hospitalized", name: "住院", remainingTurns: turns, tone: "negative" }];
+      }
+      events.push(event(state, "HAZARD_TRIGGERED", `${player.name}触发${hazard.type === "roadblock" ? "路障" : hazard.type === "mine" ? "地雷" : "定时炸弹"}并停止移动`, events.length));
+      hazardTriggered = true;
+      break;
+    }
   }
 
   return {
@@ -36,10 +62,11 @@ export function rollAndMove(state: GameState, playerId: PlayerId): CommandResult
       ...state,
       rngState: rng.state,
       lastRoll: roll,
-      phase: "resolving",
+      phase: hazardTriggered ? "turn-end" : "resolving",
+      hazards,
       players: {
         ...state.players,
-        [playerId]: { ...state.players[playerId], position },
+        [playerId]: { ...player, position, cash, statuses },
       },
       eventLog: [...state.eventLog, ...events],
     },
@@ -53,6 +80,13 @@ export function endTurn(state: GameState): CommandResult {
   }
 
   const activeOrder = state.turnOrder.filter((id) => state.players[id].active);
+  const reached = activeOrder.filter((id) => getNetWorth(state, id) >= state.config.targetNetWorth);
+  if (reached.length) {
+    const best = Math.max(...reached.map((id) => getNetWorth(state, id)));
+    const winnerIds = reached.filter((id) => getNetWorth(state, id) === best);
+    const finished = event(state, "TARGET_REACHED", `${state.players[winnerIds[0]].name}达到目标资产`, 0);
+    return { state: { ...state, phase: "game-over", winnerIds, eventLog: [...state.eventLog, finished] }, events: [finished] };
+  }
   if (activeOrder.length <= 1) {
     const winnerIds = activeOrder;
     const finished = event(state, "GAME_OVER", winnerIds.length ? `${state.players[winnerIds[0]].name}获得胜利` : "本局结束", 0);
@@ -62,15 +96,22 @@ export function endTurn(state: GameState): CommandResult {
     };
   }
 
-  const currentIndex = activeOrder.indexOf(state.currentPlayerId);
-  const nextIndex = (currentIndex + 1) % activeOrder.length;
-  const nextId = activeOrder[nextIndex];
-  const wrapped = nextIndex === 0;
+  const currentIndex = state.turnOrder.indexOf(state.currentPlayerId);
+  let nextIndex = currentIndex;
+  for (let offset = 1; offset <= state.turnOrder.length; offset += 1) {
+    const candidate = (currentIndex + offset) % state.turnOrder.length;
+    if (state.players[state.turnOrder[candidate]].active) {
+      nextIndex = candidate;
+      break;
+    }
+  }
+  const nextId = state.turnOrder[nextIndex];
+  const wrapped = nextIndex <= currentIndex;
   const nextRound = state.round + (wrapped ? 1 : 0);
 
   if (nextRound > state.config.maxRounds) {
     const ranked = activeOrder
-      .map((id) => ({ id, worth: state.players[id].cash + state.players[id].propertyIds.reduce((sum, propertyId) => sum + state.properties[propertyId].price, 0) }))
+      .map((id) => ({ id, worth: getNetWorth(state, id) }))
       .sort((a, b) => b.worth - a.worth);
     const winners = ranked.filter((entry) => entry.worth === ranked[0].worth).map((entry) => entry.id);
     const finished = event(state, "GAME_OVER", "达到回合上限，按净资产结算", 0);
@@ -98,8 +139,13 @@ export function endTurn(state: GameState): CommandResult {
       eventLog: [...state.eventLog, started],
   };
   const statusResult = tickStatuses(nextState, nextId);
-  if (!wrapped) return { state: statusResult.state, events: [started, ...statusResult.events] };
+  const marketResult = wrapped ? advanceMarket(statusResult.state) : { state: statusResult.state, events: [] };
+  const blocker = nextState.players[nextId].statuses.find((status) => ["stopped", "jailed", "hospitalized"].includes(status.id));
+  const events = [started, ...statusResult.events, ...marketResult.events];
+  if (!blocker) return { state: marketResult.state, events };
 
-  const marketResult = advanceMarket(statusResult.state);
-  return { state: marketResult.state, events: [started, ...statusResult.events, ...marketResult.events] };
+  const skipped: GameEvent = { id: `${state.turn + 1}-TURN_SKIPPED-0`, type: "TURN_SKIPPED", message: `${state.players[nextId].name}因${blocker.name}跳过行动`, playerId: nextId };
+  const skippedState: GameState = { ...marketResult.state, phase: "turn-end", eventLog: [...marketResult.state.eventLog, skipped] };
+  const following = endTurn(skippedState);
+  return { state: following.state, events: [...events, skipped, ...following.events] };
 }

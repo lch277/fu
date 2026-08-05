@@ -1,7 +1,7 @@
 import type { GameCommand, GameState } from "@/game/types";
 
 export function ModalLayer({ state, onCommand }: { state: GameState; onCommand(command: GameCommand): void }) {
-  if (!state.pending) return null;
+  if (!state.pending || state.players[state.currentPlayerId].kind !== "human") return null;
   const property = state.properties[state.pending.propertyId];
   const playerId = state.currentPlayerId;
   const buying = state.pending.type === "purchase";

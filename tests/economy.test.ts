@@ -101,6 +101,25 @@ describe("地产经济", () => {
     expect(result.events).toContainEqual(expect.objectContaining({ type: "TOLL_PAID", amount: toll }));
   });
 
+  it("复仇状态会把下一次通行费损失返还给来源玩家", () => {
+    const state = stateAt("beijing-1");
+    const owned: GameState = {
+      ...state,
+      properties: { ...state.properties, "beijing-1": { ...state.properties["beijing-1"], ownerId: "p2", level: 1 } },
+      players: {
+        ...state.players,
+        p1: { ...state.players.p1, statuses: [{ id: "revenge", name: "复仇卡", remainingTurns: 1, tone: "positive" }] },
+        p2: { ...state.players.p2, propertyIds: ["beijing-1"] },
+      },
+    };
+    const result = resolveLanding(owned, "p1");
+
+    expect(result.state.players.p1.cash).toBe(28_000);
+    expect(result.state.players.p2.cash).toBe(28_000);
+    expect(result.state.players.p1.statuses).toEqual([]);
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "REVENGE_TRIGGERED" }));
+  });
+
   it("现金不足支付通行费时安全破产", () => {
     const state = stateAt("beijing-1");
     const owned: GameState = {
@@ -121,5 +140,41 @@ describe("地产经济", () => {
     expect(result.state.players.p1.active).toBe(false);
     expect(result.state.players.p2.cash).toBe(28_100);
     expect(result.events.some((event) => event.type === "PLAYER_BANKRUPT")).toBe(true);
+  });
+
+  it("现金不足但持有股票时会先变现再支付通行费", () => {
+    const state = stateAt("beijing-1");
+    const owned: GameState = {
+      ...state,
+      properties: { ...state.properties, "beijing-1": { ...state.properties["beijing-1"], ownerId: "p2", level: 1 } },
+      players: {
+        ...state.players,
+        p1: { ...state.players.p1, cash: 100, stocks: { mall: 100 } },
+        p2: { ...state.players.p2, propertyIds: ["beijing-1"] },
+      },
+    };
+    const result = resolveLanding(owned, "p1");
+
+    expect(result.state.players.p1.active).toBe(true);
+    expect(result.state.players.p1.stocks).toEqual({});
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "ASSETS_LIQUIDATED" }));
+    expect(result.events).not.toContainEqual(expect.objectContaining({ type: "PLAYER_BANKRUPT" }));
+  });
+
+  it("破产后自动推进并结算剩余玩家胜利", () => {
+    const state = stateAt("beijing-1");
+    const owned: GameState = {
+      ...state,
+      properties: { ...state.properties, "beijing-1": { ...state.properties["beijing-1"], ownerId: "p2", level: 5 } },
+      players: {
+        ...state.players,
+        p1: { ...state.players.p1, cash: 100 },
+        p2: { ...state.players.p2, propertyIds: ["beijing-1"] },
+      },
+    };
+    const result = resolveLanding(owned, "p1");
+
+    expect(result.state.phase).toBe("game-over");
+    expect(result.state.winnerIds).toEqual(["p2"]);
   });
 });

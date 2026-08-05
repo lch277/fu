@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyEffect, getEffectTargets, resolveSpecialSpace, tickStatuses } from "@/game/effects";
-import { createInitialState } from "@/game/reducer";
+import { createInitialState, dispatchCommand } from "@/game/reducer";
 import type { GameConfig, GameState } from "@/game/types";
 
 const config: GameConfig = {
@@ -77,6 +77,53 @@ describe("卡片与道具", () => {
 
     expect(result.state.players.p1.god).toBeNull();
     expect(result.events).toContainEqual(expect.objectContaining({ type: "GOD_LEFT" }));
+  });
+
+  it("均贫卡会平均使用者与目标玩家的现金", () => {
+    const base = createInitialState(config);
+    const state: GameState = {
+      ...base,
+      players: {
+        ...base.players,
+        p1: { ...base.players.p1, cash: 40_000, cards: ["equal-poor-card"] },
+        p2: { ...base.players.p2, cash: 10_000 },
+      },
+    };
+    const result = applyEffect(state, { playerId: "p1", effectId: "equal-poor-card", target: { type: "player", id: "p2" } });
+
+    expect(result.state.players.p1.cash).toBe(25_000);
+    expect(result.state.players.p2.cash).toBe(25_000);
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "CASH_EQUALIZED" }));
+  });
+
+  it("USE_EFFECT 指令会分派到统一效果系统", () => {
+    const state = withPlayer(createInitialState(config), { cards: ["tax-card"] });
+    const result = dispatchCommand(state, { type: "USE_EFFECT", playerId: "p1", effectId: "tax-card", targetId: "p2" });
+
+    expect(result.state.players.p1.cards).not.toContain("tax-card");
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "TAX_COLLECTED" }));
+  });
+
+  it("转向卡让目标玩家下一次反向移动并随后消耗状态", () => {
+    const base = withPlayer(createInitialState(config), { cards: ["turn-card"] });
+    const applied = applyEffect(base, { playerId: "p1", effectId: "turn-card", target: { type: "player", id: "p2" } });
+    const turnState: GameState = { ...applied.state, currentPlayerId: "p2", phase: "action" };
+    const moved = dispatchCommand(turnState, { type: "ROLL_DICE", playerId: "p2" });
+    const positionIndex = moved.state.map.nodes.findIndex((node) => node.id === moved.state.players.p2.position);
+
+    expect(positionIndex).toBeGreaterThan(24);
+    expect(moved.state.players.p2.statuses.some((status) => status.id === "reversed")).toBe(false);
+  });
+
+  it("汽车状态会一次掷三颗骰子并在移动后消耗", () => {
+    const state = withPlayer(createInitialState(config), { tools: ["car"] });
+    const applied = applyEffect(state, { playerId: "p1", effectId: "car", target: { type: "player", id: "p1" } });
+    const moved = dispatchCommand(applied.state, { type: "ROLL_DICE", playerId: "p1" });
+    const total = moved.events.find((event) => event.type === "DICE_ROLLED")?.amount ?? 0;
+
+    expect(total).toBeGreaterThanOrEqual(3);
+    expect(total).toBeLessThanOrEqual(18);
+    expect(moved.state.players.p1.statuses.some((status) => status.id === "car")).toBe(false);
   });
 });
 

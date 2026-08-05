@@ -3,6 +3,7 @@ import { buyProperty, resolveLanding, upgradeProperty } from "./economy";
 import { mainlandMap } from "./map";
 import { tradeStock } from "./stocks";
 import { endTurn, rollAndMove } from "./turn";
+import { applyEffect, getEffectTargets } from "./effects";
 import type {
   CommandResult,
   GameCommand,
@@ -90,9 +91,16 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       };
     case "END_TURN":
       return endTurn(state);
+    case "USE_EFFECT": {
+      if (state.phase !== "action") return { state, events: [], error: { code: "INVALID_PHASE", message: "只能在行动准备阶段使用卡片或道具" } };
+      const target = getEffectTargets(state, command.effectId, command.playerId).find((item) => item.id === command.targetId);
+      return target ? applyEffect(state, { playerId: command.playerId, effectId: command.effectId, target }) : { state, events: [], error: { code: "INVALID_EFFECT", message: "当前目标不可用" } };
+    }
     case "BUY_STOCK":
+      if (state.phase !== "action") return { state, events: [], error: { code: "INVALID_PHASE", message: "只能在行动准备阶段交易股票" } };
       return tradeStock(state, { playerId: command.playerId, stockId: command.stockId, quantity: command.quantity, side: "buy" });
     case "SELL_STOCK":
+      if (state.phase !== "action") return { state, events: [], error: { code: "INVALID_PHASE", message: "只能在行动准备阶段交易股票" } };
       return tradeStock(state, { playerId: command.playerId, stockId: command.stockId, quantity: command.quantity, side: "sell" });
     default:
       return {

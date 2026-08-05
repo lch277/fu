@@ -1,10 +1,8 @@
 "use client";
 
 import { create } from "zustand";
-import { applyEffect } from "@/game/effects";
 import { createInitialState, dispatchCommand } from "@/game/reducer";
 import { loadGame, saveGame } from "@/game/save";
-import { tradeStock } from "@/game/stocks";
 import { playEventSound } from "@/game/audio";
 import type { UiSettings } from "@/components/SettingsDrawer";
 import type { EffectRequest, GameCommand, GameConfig, GameEvent, GameState, StockOrder } from "@/game/types";
@@ -65,14 +63,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   useEffect(request) {
     const game = get().game;
     if (!game) return;
-    const result = applyEffect(game, request);
+    if (game.players[game.currentPlayerId].kind !== "human") return set({ error: "AI 行动中，请稍候" });
+    const result = dispatchCommand(game, { type: "USE_EFFECT", playerId: request.playerId, effectId: request.effectId, targetId: request.target.id });
     if (result.error) set({ error: result.error.message });
     else { saveGame("auto", result.state); playEventSound(result.events, get().settings.sound); set({ game: result.state, events: [...get().events, ...result.events].slice(-12), inventoryOpen: false, error: null }); }
   },
   trade(order) {
     const game = get().game;
     if (!game) return;
-    const result = tradeStock(game, order);
+    if (game.players[game.currentPlayerId].kind !== "human") return set({ error: "AI 行动中，请稍候" });
+    const result = dispatchCommand(game, { type: order.side === "buy" ? "BUY_STOCK" : "SELL_STOCK", playerId: order.playerId, stockId: order.stockId, quantity: order.quantity });
     if (result.error) set({ error: result.error.message });
     else { saveGame("auto", result.state); playEventSound(result.events, get().settings.sound); set({ game: result.state, events: [...get().events, ...result.events].slice(-12), error: null }); }
   },

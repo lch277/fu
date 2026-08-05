@@ -40,3 +40,21 @@ test("桌面棋盘优先占据主视区且设置可操作", async ({ page }) => 
   await expect(page.getByRole("button", { name: "2 倍速" })).toHaveClass(/active/);
   await expect(page.getByRole("button", { name: "关闭音效" })).toBeVisible();
 });
+
+test("844×390 手机横屏保持棋盘优先且无页面溢出", async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.reload();
+  await page.getByRole("button", { name: "开始掷骰" }).click();
+
+  const layout = await page.evaluate(() => ({
+    viewportWidth: innerWidth,
+    viewportHeight: innerHeight,
+    scrollWidth: document.documentElement.scrollWidth,
+    scrollHeight: document.documentElement.scrollHeight,
+    boardWidth: document.querySelector(".board-shell")?.getBoundingClientRect().width ?? 0,
+    railWidth: document.querySelector(".player-rail")?.getBoundingClientRect().width ?? 0,
+  }));
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.scrollHeight).toBeLessThanOrEqual(layout.viewportHeight);
+  expect(layout.boardWidth).toBeGreaterThan(layout.railWidth * 2);
+});

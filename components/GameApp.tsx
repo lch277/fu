@@ -23,17 +23,19 @@ export function GameApp() {
     const automaticLanding = game.phase === "resolving" && !game.pending;
     const automaticAi = current.kind === "ai";
     if (!automaticLanding && !automaticAi) return;
+    const movementDuration = (game.lastRoll ?? 1) * 140 + 160;
+    const delay = automaticLanding ? Math.max(520, movementDuration) : 680;
     const timer = window.setTimeout(() => {
       if (automaticLanding) command({ type: "RESOLVE_LANDING", playerId: current.id });
       else command(chooseAiCommand(game, current.id, current.difficulty ?? "standard"));
-    }, (automaticLanding ? 520 : 680) / settings.speed);
+    }, delay / settings.speed);
     return () => window.clearTimeout(timer);
   }, [command, game, scene, settings.speed]);
 
   if (store.scene === "start" || !store.game) return <StartScreen onStart={store.start} canContinue={canContinue} onContinue={store.continueGame} />;
   if (store.scene === "result") return <ResultScreen state={store.game} onRestart={store.restart} />;
   return <>
-    <GameScreen state={store.game} events={store.events} onCommand={store.command} onOpenInventory={() => store.setInventory(true)} onOpenStocks={() => store.setStocks(true)} onOpenSettings={() => store.setSettingsOpen(true)} />
+    <GameScreen state={store.game} events={store.events} animationSpeed={store.settings.speed} onCommand={store.command} onOpenInventory={() => store.setInventory(true)} onOpenStocks={() => store.setStocks(true)} onOpenSettings={() => store.setSettingsOpen(true)} />
     <InventoryDrawer open={store.inventoryOpen} state={store.game} onClose={() => store.setInventory(false)} onUse={store.useEffect} />
     <StockDrawer open={store.stocksOpen} state={store.game} onClose={() => store.setStocks(false)} onTrade={store.trade} />
     <SettingsDrawer open={store.settingsOpen} settings={store.settings} onChange={store.setSettings} onClose={() => store.setSettingsOpen(false)} onExit={store.exitToStart} />

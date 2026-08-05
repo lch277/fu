@@ -36,6 +36,15 @@ describe("本地存档", () => {
     });
   });
 
+  it("拒绝当前玩家不存在或地图节点损坏的深层伪造存档", () => {
+    const state = createInitialState(config);
+    const currentMissing = { ...state, players: { p2: state.players.p2 } };
+    const brokenMap = { ...state, map: { ...state.map, nodes: [{ id: "start" }] } };
+
+    expect(parseSave(JSON.stringify({ schemaVersion: 1, savedAt: new Date().toISOString(), state: currentMissing })).ok).toBe(false);
+    expect(parseSave(JSON.stringify({ schemaVersion: 1, savedAt: new Date().toISOString(), state: brokenMap })).ok).toBe(false);
+  });
+
   it("自动槽和手动槽可以分别保存并读取", () => {
     const state = createInitialState(config);
     saveGame("auto", state);
