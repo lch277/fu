@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { chooseAiCommand } from "@/game/ai";
 import { loadGame } from "@/game/save";
 import { GameScreen } from "./GameScreen";
@@ -13,21 +13,22 @@ import { useGameStore } from "@/store/gameStore";
 
 export function GameApp() {
   const store = useGameStore();
-  const canContinue = useMemo(() => typeof window !== "undefined" && loadGame("auto").ok, [store.scene]);
+  const { game, scene, settings, command } = store;
+  const mounted = useSyncExternalStore(() => () => undefined, () => true, () => false);
+  const canContinue = mounted && loadGame("auto").ok;
 
   useEffect(() => {
-    const game = store.game;
-    if (!game || store.scene !== "game" || game.phase === "game-over") return;
+    if (!game || scene !== "game" || game.phase === "game-over") return;
     const current = game.players[game.currentPlayerId];
     const automaticLanding = game.phase === "resolving" && !game.pending;
     const automaticAi = current.kind === "ai";
     if (!automaticLanding && !automaticAi) return;
     const timer = window.setTimeout(() => {
-      if (automaticLanding) store.command({ type: "RESOLVE_LANDING", playerId: current.id });
-      else store.command(chooseAiCommand(game, current.id, current.difficulty ?? "standard"));
-    }, (automaticLanding ? 520 : 680) / store.settings.speed);
+      if (automaticLanding) command({ type: "RESOLVE_LANDING", playerId: current.id });
+      else command(chooseAiCommand(game, current.id, current.difficulty ?? "standard"));
+    }, (automaticLanding ? 520 : 680) / settings.speed);
     return () => window.clearTimeout(timer);
-  }, [store.game, store.scene]);
+  }, [command, game, scene, settings.speed]);
 
   if (store.scene === "start" || !store.game) return <StartScreen onStart={store.start} canContinue={canContinue} onContinue={store.continueGame} />;
   if (store.scene === "result") return <ResultScreen state={store.game} onRestart={store.restart} />;

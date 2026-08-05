@@ -11,6 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase,
     title: "神州大富翁｜掷出你的财富传奇",
     description: "高清手办风的本地多人经营游戏：买地产、炒股票、用卡片，与好友或 AI 环游神州。",
+    icons: { icon: "/favicon.svg" },
     openGraph: {
       title: "神州大富翁",
       description: "掷出你的财富传奇",

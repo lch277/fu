@@ -14,8 +14,12 @@ const colors = [0x73d5dc, 0x8bd38d, 0xffc95b, 0xf16482, 0x7868c9];
 export function BoardCanvas({ state, events }: BoardCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
+  const eventsRef = useRef(events);
   const seenEventRef = useRef<string | null>(null);
-  stateRef.current = state;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -114,9 +118,9 @@ export function BoardCanvas({ state, events }: BoardCanvasProps) {
       redraw();
       observer = new ResizeObserver(redraw);
       observer.observe(host);
-      const latest = events.at(-1);
-      if (latest) pulse(events.slice(-8));
       (host as HTMLDivElement & { replay?: (items: GameEvent[]) => void }).replay = pulse;
+      const latest = eventsRef.current.at(-1);
+      if (latest) pulse(eventsRef.current.slice(-8));
     });
 
     return () => {
@@ -128,6 +132,7 @@ export function BoardCanvas({ state, events }: BoardCanvasProps) {
   }, []);
 
   useEffect(() => {
+    eventsRef.current = events;
     const latest = events.at(-1);
     if (!latest || latest.id === seenEventRef.current) return;
     seenEventRef.current = latest.id;

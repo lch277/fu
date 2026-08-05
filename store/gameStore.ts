@@ -31,11 +31,6 @@ interface GameStore {
   exitToStart(): void;
 }
 
-function persisted(state: GameState, events: GameEvent[]) {
-  saveGame("auto", state);
-  return { game: state, events: [...events, ...state.eventLog.slice(-1)], scene: state.phase === "game-over" ? "result" as const : "game" as const };
-}
-
 export const useGameStore = create<GameStore>((set, get) => ({
   scene: "start",
   game: null,
