@@ -17,6 +17,10 @@ export function collectUnplayedEvents(events: GameEvent[], playedIds: Set<string
   return unseen;
 }
 
+export function createInitialPlayedEventIds(events: GameEvent[]): Set<string> {
+  return new Set(events.map((event) => event.id));
+}
+
 const colors = [0x73d5dc, 0x8bd38d, 0xffc95b, 0xf16482, 0x7868c9];
 
 export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasProps) {
@@ -24,7 +28,7 @@ export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasPr
   const stateRef = useRef(state);
   const eventsRef = useRef(events);
   const speedRef = useRef(animationSpeed);
-  const playedEventIdsRef = useRef<Set<string>>(new Set());
+  const playedEventIdsRef = useRef<Set<string>>(createInitialPlayedEventIds(events));
 
   useEffect(() => {
     stateRef.current = state;

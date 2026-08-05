@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mainlandMap } from "@/game/map";
 import { buildAnimationPlan, createBoardGeometry } from "@/render/boardGeometry";
-import { collectUnplayedEvents } from "@/components/BoardCanvas";
+import { collectUnplayedEvents, createInitialPlayedEventIds } from "@/components/BoardCanvas";
 
 describe("棋盘渲染几何", () => {
   it("将 32 个站点归一化并闭合为环线", () => {
@@ -35,5 +35,12 @@ describe("动画事件队列", () => {
 
     expect(collectUnplayedEvents(events, played).map((event) => event.id)).toEqual(["e2"]);
     expect(collectUnplayedEvents(events, played)).toEqual([]);
+  });
+
+  it("棋盘挂载时把恢复的历史事件标记为已播放", () => {
+    const history = [{ id: "saved-1", type: "PLAYER_STEPPED", message: "历史移动" }];
+    const played = createInitialPlayedEventIds(history);
+
+    expect(collectUnplayedEvents(history, played)).toEqual([]);
   });
 });
