@@ -45,6 +45,22 @@ describe("本地存档", () => {
     expect(parseSave(JSON.stringify({ schemaVersion: 1, savedAt: new Date().toISOString(), state: brokenMap })).ok).toBe(false);
   });
 
+  it("拒绝缺少事件、障碍、待处理状态或非法阶段的存档", () => {
+    const state = createInitialState(config);
+    const variants = [
+      { ...state, eventLog: undefined },
+      { ...state, hazards: undefined },
+      { ...state, pending: undefined },
+      { ...state, phase: "teleporting" },
+      { ...state, round: 0 },
+      { ...state, turn: Number.NaN },
+    ];
+
+    for (const invalid of variants) {
+      expect(parseSave(JSON.stringify({ schemaVersion: 1, savedAt: new Date().toISOString(), state: invalid })).ok).toBe(false);
+    }
+  });
+
   it("自动槽和手动槽可以分别保存并读取", () => {
     const state = createInitialState(config);
     saveGame("auto", state);

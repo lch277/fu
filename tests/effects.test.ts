@@ -125,6 +125,29 @@ describe("卡片与道具", () => {
     expect(total).toBeLessThanOrEqual(18);
     expect(moved.state.players.p1.statuses.some((status) => status.id === "car")).toBe(false);
   });
+
+  it("定时炸弹附着目标并在移动六格后爆炸", () => {
+    const state = withPlayer(createInitialState({ ...config, seed: 9 }), { tools: ["bomb"] });
+    const applied = applyEffect(state, { playerId: "p1", effectId: "bomb", target: { type: "player", id: "p2" } });
+    const turnState: GameState = {
+      ...applied.state,
+      currentPlayerId: "p2",
+      phase: "action",
+      players: {
+        ...applied.state.players,
+        p2: {
+          ...applied.state.players.p2,
+          statuses: applied.state.players.p2.statuses.map((status) => status.id === "bomb" ? { ...status, remainingTurns: 1 } : status),
+        },
+      },
+    };
+    const moved = dispatchCommand(turnState, { type: "ROLL_DICE", playerId: "p2" });
+
+    expect(applied.state.players.p2.statuses).toContainEqual(expect.objectContaining({ id: "bomb", remainingTurns: 6 }));
+    expect(moved.events).toContainEqual(expect.objectContaining({ type: "BOMB_EXPLODED" }));
+    expect(moved.state.players.p2.statuses).toContainEqual(expect.objectContaining({ id: "hospitalized" }));
+    expect(moved.state.phase).toBe("turn-end");
+  });
 });
 
 describe("持续状态与特殊设施", () => {
@@ -146,5 +169,16 @@ describe("持续状态与特殊设施", () => {
     expect(a.state.players.p1.cash).toBe(b.state.players.p1.cash);
     expect(a.events).toEqual(b.events);
     expect(a.state.rngState).toBe(b.state.rngState);
+  });
+
+  it("商店补给池同时包含卡片和道具", () => {
+    const base = createInitialState(config);
+    const toolShop = resolveSpecialSpace(withPlayer(base, { position: "shop-3", cards: [], tools: [] }), "p1");
+    const cardShop = resolveSpecialSpace(withPlayer(base, { position: "shop-2", cards: [], tools: [] }), "p1");
+
+    expect(toolShop.state.players.p1.tools).toHaveLength(1);
+    expect(toolShop.state.players.p1.cards).toHaveLength(0);
+    expect(cardShop.state.players.p1.cards).toHaveLength(1);
+    expect(cardShop.state.players.p1.tools).toHaveLength(0);
   });
 });

@@ -46,7 +46,12 @@ export function getEffectTargets(state: GameState, effectId: string, playerId: P
       .filter((id) => id !== playerId && state.players[id].active)
       .map((id) => ({ type: "player" as const, id }));
   }
-  if (["roadblock", "mine", "bomb"].includes(effectId)) {
+  if (effectId === "bomb") {
+    return state.turnOrder
+      .filter((id) => id !== playerId && state.players[id].active)
+      .map((id) => ({ type: "player" as const, id }));
+  }
+  if (["roadblock", "mine"].includes(effectId)) {
     const occupied = new Set(state.hazards.map((hazard) => hazard.nodeId));
     return state.map.nodes
       .filter((node) => node.id !== player.position && !occupied.has(node.id) && node.type !== "hospital" && node.type !== "jail")
@@ -187,9 +192,20 @@ export function applyEffect(state: GameState, request: EffectRequest): CommandRe
       events.push(makeEvent(state, "STOCK_MANIPULATED", `${stock.name}${delta > 0 ? "涨停" : "跌停"}`, actor.id));
       break;
     }
-    case "roadblock":
-    case "mine":
     case "bomb": {
+      const status = { id: "bomb", name: "定时炸弹（6）", remainingTurns: 6, tone: "negative" as const };
+      players = {
+        ...players,
+        [targetPlayer!.id]: {
+          ...targetPlayer!,
+          statuses: [...targetPlayer!.statuses.filter((item) => item.id !== "bomb"), status],
+        },
+      };
+      events.push(makeEvent(state, "BOMB_ATTACHED", `${actor.name}把定时炸弹交给${targetPlayer!.name}，移动六格后爆炸`, actor.id));
+      break;
+    }
+    case "roadblock":
+    case "mine": {
       const type = request.effectId === "roadblock" ? "roadblock" : request.effectId;
       hazards = [...hazards, { id: `${state.turn}-${type}-${request.target.id}`, nodeId: request.target.id, ownerId: actor.id, type }];
       events.push(makeEvent(state, "HAZARD_PLACED", `${actor.name}放置了${request.effectId === "roadblock" ? "路障" : request.effectId === "mine" ? "地雷" : "定时炸弹"}`, actor.id));
@@ -249,7 +265,7 @@ export function tickStatuses(state: GameState, playerId: PlayerId): CommandResul
     god = god.remainingTurns <= 1 ? null : { ...god, remainingTurns: god.remainingTurns - 1 };
     if (!god) events.push(makeEvent(state, "GOD_LEFT", "附身神仙离开了", playerId));
   }
-  const usedOnAction = new Set(["reversed", "remote-die", "motorbike", "car", "immunity", "revenge"]);
+  const usedOnAction = new Set(["reversed", "remote-die", "motorbike", "car", "immunity", "revenge", "bomb"]);
   const statuses = player.statuses
     .map((status) => usedOnAction.has(status.id) ? status : { ...status, remainingTurns: status.remainingTurns - 1 })
     .filter((status) => status.remainingTurns > 0);
@@ -266,6 +282,7 @@ export function resolveSpecialSpace(state: GameState, playerId: PlayerId): Comma
   const rng = createRng(state.rngState);
   let cash = player.cash;
   let cards = player.cards;
+  let tools = player.tools;
   let statuses = player.statuses;
   let message = `${player.name}来到${node.name}`;
   let amount = 0;
@@ -280,9 +297,11 @@ export function resolveSpecialSpace(state: GameState, playerId: PlayerId): Comma
     cash += amount;
     message = "银行结算利息 ¥300";
   } else if (node.type === "shop") {
-    const item = CARD_DEFINITIONS[rng.integer(0, CARD_DEFINITIONS.length - 1)];
-    cards = [...cards, item.id];
-    message = `获得一张${item.name}`;
+    const inventory = node.id === "shop-3" ? TOOL_DEFINITIONS : node.id === "shop-2" ? CARD_DEFINITIONS : [...CARD_DEFINITIONS, ...TOOL_DEFINITIONS];
+    const item = inventory[rng.integer(0, inventory.length - 1)];
+    if (toolIds.has(item.id)) tools = [...tools, item.id];
+    else cards = [...cards, item.id];
+    message = `获得${toolIds.has(item.id) ? "道具" : "卡片"}·${item.name}`;
   } else if (node.type === "hospital" || node.type === "jail") {
     const id = node.type === "hospital" ? "hospitalized" : "jailed";
     const immune = statuses.find((status) => status.id === "immunity");
@@ -302,7 +321,7 @@ export function resolveSpecialSpace(state: GameState, playerId: PlayerId): Comma
   const resolved = makeEvent(state, "SPECIAL_SPACE_RESOLVED", message, playerId, amount || undefined);
   return finish(state, [resolved], {
     rngState: rng.state,
-    players: { ...state.players, [playerId]: { ...player, cash, cards, statuses } },
+    players: { ...state.players, [playerId]: { ...player, cash, cards, tools, statuses } },
     phase: "turn-end",
   });
 }

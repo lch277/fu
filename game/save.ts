@@ -18,27 +18,36 @@ function isGameState(value: unknown): value is GameState {
   if (!value || typeof value !== "object") return false;
   const state = value as Partial<GameState>;
   const record = (entry: unknown): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object" && !Array.isArray(entry);
+  const finite = (entry: unknown): entry is number => typeof entry === "number" && Number.isFinite(entry);
+  const nonNegativeInteger = (entry: unknown): entry is number => Number.isInteger(entry) && (entry as number) >= 0;
+  const phases = new Set(["turn-start", "action", "moving", "resolving", "turn-end", "game-over"]);
+  const nodeTypes = new Set(["start", "property", "company", "bank", "shop", "chance", "news", "hospital", "jail", "magic", "lottery"]);
   if (!(
     state.version === 1 &&
     typeof state.currentPlayerId === "string" &&
-    typeof state.phase === "string" &&
+    typeof state.phase === "string" && phases.has(state.phase) &&
     typeof state.players === "object" &&
     state.players !== null &&
     Array.isArray(state.turnOrder) &&
     Array.isArray(state.map?.nodes) &&
     typeof state.properties === "object" &&
     typeof state.stocks === "object" &&
-    typeof state.rngState === "number"
+    finite(state.seed) && finite(state.rngState) &&
+    Number.isInteger(state.round) && state.round! >= 1 &&
+    Number.isInteger(state.turn) && state.turn! >= 1 &&
+    (state.lastRoll === null || (Number.isInteger(state.lastRoll) && state.lastRoll! >= 1 && state.lastRoll! <= 18)) &&
+    Array.isArray(state.eventLog) && Array.isArray(state.hazards) && Array.isArray(state.winnerIds) &&
+    Object.prototype.hasOwnProperty.call(state, "pending")
   )) return false;
 
   if (!record(state.players) || !record(state.properties) || !record(state.stocks) || !state.turnOrder?.length) return false;
   if (!state.turnOrder.includes(state.currentPlayerId) || !state.turnOrder.every((id) => record(state.players![id]))) return false;
-  if (!state.config || !Array.isArray(state.config.players) || state.config.players.length !== state.turnOrder.length) return false;
-  if (!state.map || !Array.isArray(state.map.nodes) || state.map.nodes.length < 2) return false;
+  if (!state.config || !Array.isArray(state.config.players) || state.config.players.length !== state.turnOrder.length || !["quick", "standard"].includes(state.config.mode) || !finite(state.config.seed) || !Number.isInteger(state.config.maxRounds) || state.config.maxRounds < 1 || !finite(state.config.targetNetWorth) || state.config.targetNetWorth <= 0) return false;
+  if (!state.map || typeof state.map.id !== "string" || typeof state.map.name !== "string" || !Array.isArray(state.map.nodes) || state.map.nodes.length < 2) return false;
 
   const nodeIds = new Set<string>();
   for (const node of state.map.nodes) {
-    if (!node || typeof node.id !== "string" || typeof node.name !== "string" || typeof node.type !== "string" || typeof node.x !== "number" || typeof node.y !== "number" || !Array.isArray(node.next)) return false;
+    if (!node || typeof node.id !== "string" || typeof node.name !== "string" || typeof node.type !== "string" || !nodeTypes.has(node.type) || !finite(node.x) || !finite(node.y) || !Array.isArray(node.next)) return false;
     nodeIds.add(node.id);
   }
   if (!state.map.nodes.every((node) => node.next.length > 0 && node.next.every((id) => nodeIds.has(id)))) return false;
@@ -47,14 +56,29 @@ function isGameState(value: unknown): value is GameState {
     const player = state.players[id] as GameState["players"][string];
     if (player.id !== id || typeof player.name !== "string" || typeof player.cash !== "number" || !Number.isFinite(player.cash) || typeof player.active !== "boolean" || !nodeIds.has(player.position)) return false;
     if (!Array.isArray(player.propertyIds) || !Array.isArray(player.cards) || !Array.isArray(player.tools) || !Array.isArray(player.statuses) || !record(player.stocks)) return false;
+    if (!player.propertyIds.every((propertyId) => typeof propertyId === "string") || !player.cards.every((card) => typeof card === "string") || !player.tools.every((tool) => typeof tool === "string")) return false;
+    if (!Object.values(player.stocks).every((quantity) => nonNegativeInteger(quantity))) return false;
+    if (!player.statuses.every((status) => status && typeof status.id === "string" && typeof status.name === "string" && nonNegativeInteger(status.remainingTurns) && ["positive", "negative", "neutral"].includes(status.tone))) return false;
+    if (player.god !== null && (!record(player.god) || typeof player.god.id !== "string" || typeof player.god.name !== "string" || !nonNegativeInteger(player.god.remainingTurns) || !["positive", "negative"].includes(player.god.tone))) return false;
   }
 
   for (const [id, property] of Object.entries(state.properties)) {
-    if (!record(property) || property.id !== id || typeof property.price !== "number" || typeof property.level !== "number" || typeof property.maxLevel !== "number") return false;
+    if (!record(property) || property.id !== id || typeof property.name !== "string" || typeof property.group !== "string" || !finite(property.price) || !finite(property.baseToll) || !nonNegativeInteger(property.level) || !nonNegativeInteger(property.maxLevel) || property.level > property.maxLevel) return false;
     if (property.ownerId !== null && (typeof property.ownerId !== "string" || !state.players[property.ownerId])) return false;
   }
   for (const [id, stock] of Object.entries(state.stocks)) {
-    if (!record(stock) || stock.id !== id || typeof stock.price !== "number" || typeof stock.previousPrice !== "number") return false;
+    if (!record(stock) || stock.id !== id || typeof stock.name !== "string" || !finite(stock.price) || !finite(stock.previousPrice) || !finite(stock.limitUp) || !finite(stock.limitDown) || stock.companyPropertyId !== null && typeof stock.companyPropertyId !== "string") return false;
+  }
+
+  for (const propertyId of Object.keys(state.properties)) {
+    const ownerId = state.properties[propertyId].ownerId;
+    if (ownerId && !state.players[ownerId].propertyIds.includes(propertyId)) return false;
+  }
+  if (!state.hazards.every((hazard) => hazard && typeof hazard.id === "string" && nodeIds.has(hazard.nodeId) && Boolean(state.players[hazard.ownerId]) && ["roadblock", "mine", "bomb"].includes(hazard.type))) return false;
+  if (!state.eventLog.every((entry) => record(entry) && typeof entry.id === "string" && typeof entry.type === "string" && typeof entry.message === "string")) return false;
+  if (!state.winnerIds.every((id) => typeof id === "string" && Boolean(state.players[id]))) return false;
+  if (state.pending !== null) {
+    if (!record(state.pending) || !["purchase", "upgrade"].includes(String(state.pending.type)) || typeof state.pending.propertyId !== "string" || !state.properties[state.pending.propertyId]) return false;
   }
   return true;
 }

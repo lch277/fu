@@ -23,7 +23,7 @@ export const CARD_DEFINITIONS: ContentDefinition[] = [
 export const TOOL_DEFINITIONS: ContentDefinition[] = [
   { id: "roadblock", name: "路障", description: "让到达此处的角色停止", icon: "障" },
   { id: "mine", name: "地雷", description: "使踩中的角色住院", icon: "雷" },
-  { id: "bomb", name: "定时炸弹", description: "随角色移动并在倒计时后爆炸", icon: "弹" },
+  { id: "bomb", name: "定时炸弹", description: "交给对手，随角色移动六格后爆炸", icon: "弹" },
   { id: "machine-doll", name: "机器娃娃", description: "清除前方六格道路障碍", icon: "机" },
   { id: "motorbike", name: "机车", description: "接下来可以使用两颗骰子", icon: "骑" },
   { id: "car", name: "汽车", description: "接下来可以使用三颗骰子", icon: "车" },

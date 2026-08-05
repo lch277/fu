@@ -67,6 +67,30 @@ describe("完整回合联动", () => {
     expect(result.events).toContainEqual(expect.objectContaining({ type: "TARGET_REACHED" }));
   });
 
+  it("回合开始效果使净资产越过目标时会在行动前结算", () => {
+    const base = createInitialState(config);
+    const state: GameState = {
+      ...base,
+      currentPlayerId: "p2",
+      turn: 2,
+      phase: "turn-end",
+      players: {
+        ...base.players,
+        p1: {
+          ...base.players.p1,
+          cash: config.targetNetWorth - 1_000,
+          god: { id: "wealth-god", name: "财神", remainingTurns: 2, tone: "positive" },
+        },
+      },
+    };
+
+    const result = dispatchCommand(state, { type: "END_TURN", playerId: "p2" });
+
+    expect(result.state.players.p1.cash).toBe(config.targetNetWorth + 200);
+    expect(result.state.phase).toBe("game-over");
+    expect(result.state.winnerIds).toEqual(["p1"]);
+  });
+
   it("停留状态会跳过目标玩家的行动并消耗一回合", () => {
     const base = createInitialState(config);
     const state: GameState = {

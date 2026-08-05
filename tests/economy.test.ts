@@ -161,6 +161,28 @@ describe("地产经济", () => {
     expect(result.events).not.toContainEqual(expect.objectContaining({ type: "PLAYER_BANKRUPT" }));
   });
 
+  it("变现地产后会同步释放产权且不再形成幽灵收费", () => {
+    const state = stateAt("beijing-1");
+    const owned: GameState = {
+      ...state,
+      properties: {
+        ...state.properties,
+        "beijing-1": { ...state.properties["beijing-1"], ownerId: "p2", level: 4 },
+        tianjin: { ...state.properties.tianjin, ownerId: "p1", level: 2 },
+      },
+      players: {
+        ...state.players,
+        p1: { ...state.players.p1, cash: 100, propertyIds: ["tianjin"] },
+        p2: { ...state.players.p2, propertyIds: ["beijing-1"] },
+      },
+    };
+    const result = resolveLanding(owned, "p1");
+
+    expect(result.state.players.p1.propertyIds).not.toContain("tianjin");
+    expect(result.state.properties.tianjin.ownerId).toBeNull();
+    expect(result.state.properties.tianjin.level).toBe(0);
+  });
+
   it("破产后自动推进并结算剩余玩家胜利", () => {
     const state = stateAt("beijing-1");
     const owned: GameState = {

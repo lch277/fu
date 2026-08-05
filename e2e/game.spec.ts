@@ -52,9 +52,37 @@ test("844×390 手机横屏保持棋盘优先且无页面溢出", async ({ page 
     scrollWidth: document.documentElement.scrollWidth,
     scrollHeight: document.documentElement.scrollHeight,
     boardWidth: document.querySelector(".board-shell")?.getBoundingClientRect().width ?? 0,
-    railWidth: document.querySelector(".player-rail")?.getBoundingClientRect().width ?? 0,
+    boardTop: document.querySelector(".board-shell")?.getBoundingClientRect().top ?? 0,
+    railBottom: document.querySelector(".player-rail")?.getBoundingClientRect().bottom ?? 0,
   }));
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.scrollHeight).toBeLessThanOrEqual(layout.viewportHeight);
-  expect(layout.boardWidth).toBeGreaterThan(layout.railWidth * 2);
+  expect(layout.boardWidth).toBeGreaterThan(layout.viewportWidth * 0.9);
+  expect(layout.railBottom).toBeLessThanOrEqual(layout.boardTop + 4);
+});
+
+test("844×390 四人局使用顶部玩家条并保持无溢出", async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.reload();
+  await page.getByRole("button", { name: "四人局" }).click();
+  await page.getByRole("button", { name: "开始掷骰" }).click();
+
+  const layout = await page.evaluate(() => {
+    const board = document.querySelector(".board-shell")!.getBoundingClientRect();
+    const rail = document.querySelector(".player-rail")!.getBoundingClientRect();
+    return {
+      scrollWidth: document.documentElement.scrollWidth,
+      scrollHeight: document.documentElement.scrollHeight,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+      boardTop: board.top,
+      railBottom: rail.bottom,
+      cards: document.querySelectorAll(".player-card").length,
+    };
+  });
+
+  expect(layout.cards).toBe(4);
+  expect(layout.railBottom).toBeLessThanOrEqual(layout.boardTop + 4);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.scrollHeight).toBeLessThanOrEqual(layout.viewportHeight);
 });

@@ -8,6 +8,16 @@ function event(state: GameState, type: string, message: string, index: number, a
   return { id: `${state.turn}-${type}-${index}`, type, message, playerId: state.currentPlayerId, amount };
 }
 
+function finishTargetVictory(state: GameState): CommandResult | null {
+  const activeOrder = state.turnOrder.filter((id) => state.players[id].active);
+  const reached = activeOrder.filter((id) => getNetWorth(state, id) >= state.config.targetNetWorth);
+  if (!reached.length) return null;
+  const best = Math.max(...reached.map((id) => getNetWorth(state, id)));
+  const winnerIds = reached.filter((id) => getNetWorth(state, id) === best);
+  const finished = event(state, "TARGET_REACHED", `${state.players[winnerIds[0]].name}达到目标资产`, 0);
+  return { state: { ...state, phase: "game-over", winnerIds, eventLog: [...state.eventLog, finished] }, events: [finished] };
+}
+
 export function rollAndMove(state: GameState, playerId: PlayerId): CommandResult {
   if (state.phase !== "action") {
     return {
@@ -28,6 +38,7 @@ export function rollAndMove(state: GameState, playerId: PlayerId): CommandResult
   let cash = player.cash;
   let hazards = state.hazards;
   let statuses = player.statuses.filter((status) => !["car", "motorbike", "remote-die", "reversed"].includes(status.id));
+  let bomb = statuses.find((status) => status.id === "bomb");
   let hazardTriggered = false;
   const reversed = hasStatus("reversed");
   const events: GameEvent[] = [event(state, "DICE_ROLLED", diceCount > 1 ? `${diceCount} 颗骰子共 ${roll} 点` : `掷出了 ${roll} 点`, 0, roll)];
@@ -44,6 +55,19 @@ export function rollAndMove(state: GameState, playerId: PlayerId): CommandResult
       ...event(state, "PLAYER_STEPPED", `${reversed ? "后退" : "前进"}到${nodeById.get(position)?.name ?? "下一站"}`, events.length),
       data: { nodeId: position, step: step + 1 },
     });
+    if (bomb) {
+      bomb = { ...bomb, remainingTurns: bomb.remainingTurns - 1 };
+      statuses = statuses.map((status) => status.id === "bomb" ? bomb! : status);
+      if (bomb.remainingTurns <= 0) {
+        statuses = [
+          ...statuses.filter((status) => status.id !== "bomb" && status.id !== "hospitalized"),
+          { id: "hospitalized", name: "住院", remainingTurns: 3, tone: "negative" },
+        ];
+        events.push(event(state, "BOMB_EXPLODED", `${player.name}携带的定时炸弹爆炸，需要住院三回合`, events.length));
+        hazardTriggered = true;
+        break;
+      }
+    }
     const hazard = hazards.find((item) => item.nodeId === position && item.ownerId !== playerId);
     if (hazard) {
       hazards = hazards.filter((item) => item.id !== hazard.id);
@@ -80,13 +104,8 @@ export function endTurn(state: GameState): CommandResult {
   }
 
   const activeOrder = state.turnOrder.filter((id) => state.players[id].active);
-  const reached = activeOrder.filter((id) => getNetWorth(state, id) >= state.config.targetNetWorth);
-  if (reached.length) {
-    const best = Math.max(...reached.map((id) => getNetWorth(state, id)));
-    const winnerIds = reached.filter((id) => getNetWorth(state, id) === best);
-    const finished = event(state, "TARGET_REACHED", `${state.players[winnerIds[0]].name}达到目标资产`, 0);
-    return { state: { ...state, phase: "game-over", winnerIds, eventLog: [...state.eventLog, finished] }, events: [finished] };
-  }
+  const targetVictory = finishTargetVictory(state);
+  if (targetVictory) return targetVictory;
   if (activeOrder.length <= 1) {
     const winnerIds = activeOrder;
     const finished = event(state, "GAME_OVER", winnerIds.length ? `${state.players[winnerIds[0]].name}获得胜利` : "本局结束", 0);
@@ -140,6 +159,13 @@ export function endTurn(state: GameState): CommandResult {
   };
   const statusResult = tickStatuses(nextState, nextId);
   const marketResult = wrapped ? advanceMarket(statusResult.state) : { state: statusResult.state, events: [] };
+  const nextTargetVictory = finishTargetVictory(marketResult.state);
+  if (nextTargetVictory) {
+    return {
+      state: nextTargetVictory.state,
+      events: [started, ...statusResult.events, ...marketResult.events, ...nextTargetVictory.events],
+    };
+  }
   const blocker = nextState.players[nextId].statuses.find((status) => ["stopped", "jailed", "hospitalized"].includes(status.id));
   const events = [started, ...statusResult.events, ...marketResult.events];
   if (!blocker) return { state: marketResult.state, events };

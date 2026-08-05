@@ -13,9 +13,10 @@ interface GameScreenProps {
   onOpenStocks(): void;
   onOpenSettings?(): void;
   animationSpeed?: 1 | 2 | 4;
+  interactionLocked?: boolean;
 }
 
-export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenStocks, onOpenSettings, animationSpeed = 1 }: GameScreenProps) {
+export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenStocks, onOpenSettings, animationSpeed = 1, interactionLocked = false }: GameScreenProps) {
   const current = state.players[state.currentPlayerId];
   return (
     <main className="game-screen">
@@ -28,7 +29,7 @@ export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenSt
       <section className="game-layout">
         <div className="board-shell">
           <div className="board-glow" />
-          <div className="board-stage" aria-label="神州环游棋盘">
+          <div className="board-stage" aria-label="神州环游棋盘" aria-busy={interactionLocked}>
             <div className="map-water" />
             <BoardCanvas state={state} events={events} animationSpeed={animationSpeed} />
             {state.map.nodes.map((node, index) => {
@@ -51,7 +52,7 @@ export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenSt
         </div>
         <PlayerRail state={state} />
       </section>
-      <ActionDock state={state} onCommand={onCommand} onOpenInventory={onOpenInventory} onOpenStocks={onOpenStocks} />
+      <ActionDock state={state} interactionLocked={interactionLocked} onCommand={onCommand} onOpenInventory={onOpenInventory} onOpenStocks={onOpenStocks} />
       <ModalLayer state={state} onCommand={onCommand} />
     </main>
   );

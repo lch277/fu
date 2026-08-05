@@ -68,4 +68,21 @@ describe("游戏界面", () => {
     fireEvent.click(screen.getByRole("button", { name: "2 倍速" }));
     expect(onChange).toHaveBeenCalledWith({ sound: true, speed: 2 });
   });
+
+  it("棋子动画期间锁定落点结算按钮", () => {
+    const config: GameConfig = {
+      mode: "quick",
+      seed: 88,
+      maxRounds: 60,
+      targetNetWorth: 100_000,
+      players: [
+        { id: "p1", name: "孙小美", character: "sun-xiaomei", kind: "human", color: "#f05278" },
+        { id: "p2", name: "阿土伯", character: "a-tubo", kind: "ai", difficulty: "standard", color: "#f3b83f" },
+      ],
+    };
+    const state = { ...createInitialState(config), phase: "resolving" as const };
+    render(<GameScreen state={state} events={[]} interactionLocked onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} />);
+
+    expect(screen.getByRole("button", { name: "结算落点" })).toBeDisabled();
+  });
 });

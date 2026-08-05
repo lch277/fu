@@ -141,7 +141,7 @@ export function resolveLanding(state: GameState, playerId: PlayerId): CommandRes
       data: { propertyId: property.id, ownerId: owner.id },
     };
     const paidState: GameState = {
-      ...state,
+      ...fundedState,
       players: {
         ...fundedState.players,
         [playerId]: { ...fundedPlayer, cash: fundedPlayer.cash - paid },
