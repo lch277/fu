@@ -1,5 +1,7 @@
 .superpowers/
 .worktrees/
+work/
+outputs/
 node_modules/
 dist/
 .vinext/
