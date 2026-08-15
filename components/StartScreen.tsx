@@ -45,13 +45,7 @@ export function StartScreen({ onStart, canContinue, onContinue }: StartScreenPro
 
   return (
     <main className="start-screen">
-      <div className="skyline skyline-back" aria-hidden="true" />
       <section className="start-copy">
-        <p className="eyebrow">经典经营 · 高清新生</p>
-        <h1>神州大富翁</h1>
-        <p className="start-tagline">掷出你的财富传奇</p>
-        <p className="start-lead">买下城市，升级地标，掌控股市。和朋友或 AI 在一张热闹的神州地图上斗智斗运。</p>
-
         <div className="setup-card" aria-label="新游戏设置">
           <div className="setup-row">
             <span className="setup-label">对局节奏</span>
@@ -83,25 +77,6 @@ export function StartScreen({ onStart, canContinue, onContinue }: StartScreenPro
             {canContinue && <button className="ghost-button" onClick={onContinue}>继续上次对局</button>}
           </div>
         </div>
-      </section>
-
-      <section className="board-hero" aria-label="神州城市棋盘预览">
-        <div className="hero-sun" />
-        <div className="hero-board">
-          <div className="hero-route">
-            {["京", "津", "西", "成", "渝", "广", "深", "厦", "沪", "杭", "宁", "武"].map((name, index) => (
-              <span key={name} className={`hero-tile tile-${index}`}>{name}</span>
-            ))}
-          </div>
-          <div className="hero-city city-north">城楼</div>
-          <div className="hero-city city-east">明珠</div>
-          <div className="hero-city city-south">骑楼</div>
-          <div className="hero-dice"><i /><i /><i /><i /><i /></div>
-          <div className="hero-pawn pawn-red">美</div>
-          <div className="hero-pawn pawn-gold">土</div>
-          <div className="coin coin-one">¥</div><div className="coin coin-two">¥</div>
-        </div>
-        <div className="hero-ticket"><span>本轮目的地</span><b>神州环游</b><em>CHINA · 2026</em></div>
       </section>
     </main>
   );

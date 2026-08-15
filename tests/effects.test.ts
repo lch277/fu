@@ -181,4 +181,24 @@ describe("持续状态与特殊设施", () => {
     expect(cardShop.state.players.p1.cards).toHaveLength(1);
     expect(cardShop.state.players.p1.tools).toHaveLength(0);
   });
+
+  it("魔法屋触发随机效果：卡片、道具、现金或神仙", () => {
+    const results: GameState[] = [];
+    let state = withPlayer(createInitialState(config), { position: "magic", cards: [], tools: [], cash: 10_000 });
+    for (let i = 0; i < 40; i += 1) {
+      state = resolveSpecialSpace(state, "p1").state;
+      results.push(state);
+    }
+    const varied = new Set(results.map((entry) => {
+      const player = entry.players.p1;
+      return `${player.cards.join(",")}|${player.tools.join(",")}|${player.cash}|${player.god?.id ?? ""}`;
+    }));
+
+    expect(results.every((entry) => {
+      const player = entry.players.p1;
+      return player.cards.length > 0 || player.tools.length > 0 || player.cash !== 10_000 || player.god !== null;
+    })).toBe(true);
+    expect(varied.size).toBeGreaterThan(1);
+    expect(results[0].phase).toBe("turn-end");
+  });
 });

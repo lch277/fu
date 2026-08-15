@@ -13,6 +13,7 @@ export function chooseAiCommand(
   playerId: PlayerId,
   difficulty: AiDifficulty = "standard",
 ): GameCommand {
+  if (state.phase === "turn-end") return { type: "END_TURN", playerId };
   const actions = getLegalActions(state, playerId);
   const enabled = actions.filter((action) => action.enabled);
   if (!enabled.length) {
@@ -41,9 +42,8 @@ export function chooseAiCommand(
     return { type: "SKIP_PURCHASE", playerId };
   }
 
-  const preferred = ["RESOLVE_LANDING", "END_TURN", "ROLL_DICE"] as const;
+  const preferred = ["RESOLVE_LANDING", "ROLL_DICE"] as const;
   const selected = preferred.find((type) => enabled.some((action) => action.type === type));
   if (selected === "RESOLVE_LANDING") return { type: selected, playerId };
-  if (selected === "END_TURN") return { type: selected, playerId };
   return { type: "ROLL_DICE", playerId };
 }

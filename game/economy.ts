@@ -197,7 +197,7 @@ export function buyProperty(state: GameState, playerId: PlayerId, propertyId: st
   const bought: GameEvent = {
     id: `${state.turn}-PROPERTY_BOUGHT-0`,
     type: "PROPERTY_BOUGHT",
-    message: `${player.name}买下${property.name}`,
+    message: `${player.name}花 ¥${property.price.toLocaleString("zh-CN")} 买下${property.name}`,
     playerId,
     amount: property.price,
     data: { propertyId },

@@ -1,4 +1,4 @@
-import { CARD_DEFINITIONS, TOOL_DEFINITIONS } from "./content";
+import { CARD_DEFINITIONS, GOD_DEFINITIONS, TOOL_DEFINITIONS } from "./content";
 import { createRng } from "./rng";
 import type {
   CommandResult,
@@ -284,6 +284,7 @@ export function resolveSpecialSpace(state: GameState, playerId: PlayerId): Comma
   let cards = player.cards;
   let tools = player.tools;
   let statuses = player.statuses;
+  let god = player.god;
   let message = `${player.name}来到${node.name}`;
   let amount = 0;
 
@@ -316,12 +317,36 @@ export function resolveSpecialSpace(state: GameState, playerId: PlayerId): Comma
     amount = 800;
     cash += amount;
     message = "乐透中心发放幸运奖 ¥800";
+  } else if (node.type === "magic") {
+    const roll = rng.integer(0, 99);
+    if (roll < 35) {
+      const item = CARD_DEFINITIONS[rng.integer(0, CARD_DEFINITIONS.length - 1)];
+      cards = [...cards, item.id];
+      message = `魔法变出一张卡片·${item.name}`;
+    } else if (roll < 55) {
+      const item = TOOL_DEFINITIONS[rng.integer(0, TOOL_DEFINITIONS.length - 1)];
+      tools = [...tools, item.id];
+      message = `魔法变出一件道具·${item.name}`;
+    } else if (roll < 75) {
+      amount = rng.integer(1, 3) * 1_000;
+      cash += amount;
+      message = `魔法点石成金，获得 ¥${amount.toLocaleString("zh-CN")}`;
+    } else if (roll < 90) {
+      amount = -rng.integer(1, 2) * 500;
+      cash = Math.max(0, cash + amount);
+      message = `魔法失灵，损失 ¥${Math.abs(amount).toLocaleString("zh-CN")}`;
+    } else {
+      const def = GOD_DEFINITIONS[rng.integer(0, GOD_DEFINITIONS.length - 1)];
+      const replaced = god ? `，替换了${god.name}` : "";
+      god = { id: def.id, name: def.name, remainingTurns: 4, tone: def.id === "poor-god" || def.id === "unlucky-god" || def.id === "death-god" ? "negative" : "positive" };
+      message = `魔法召唤出${def.name}，附身四回合${replaced}`;
+    }
   }
 
   const resolved = makeEvent(state, "SPECIAL_SPACE_RESOLVED", message, playerId, amount || undefined);
   return finish(state, [resolved], {
     rngState: rng.state,
-    players: { ...state.players, [playerId]: { ...player, cash, cards, tools, statuses } },
+    players: { ...state.players, [playerId]: { ...player, cash, cards, tools, statuses, god } },
     phase: "turn-end",
   });
 }

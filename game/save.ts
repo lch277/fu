@@ -121,3 +121,13 @@ export function loadGame(slot: SaveSlot): SaveParseResult {
 export function deleteSave(slot: SaveSlot): void {
   localStorage.removeItem(`${keyPrefix}${slot}`);
 }
+
+/** 清理本游戏的全部本地存档(含旧版本前缀),新开局时调用以覆盖旧数据 */
+export function clearAllSaves(): void {
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("richman-web")) keys.push(key);
+  }
+  for (const key of keys) localStorage.removeItem(key);
+}

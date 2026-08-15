@@ -19,7 +19,6 @@ export function ActionDock({ state, interactionLocked = false, onCommand, onOpen
     if (type === "UPGRADE_PROPERTY") return { type, playerId, propertyId: state.pending!.propertyId };
     if (type === "SKIP_PURCHASE") return { type, playerId };
     if (type === "RESOLVE_LANDING") return { type, playerId };
-    if (type === "END_TURN") return { type, playerId };
     return { type: "ROLL_DICE", playerId };
   }
 
@@ -32,7 +31,7 @@ export function ActionDock({ state, interactionLocked = false, onCommand, onOpen
       <div className="phase-caption"><small>当前阶段</small><b>{state.phase === "action" ? "行动准备" : state.phase === "resolving" ? "落点结算" : state.phase === "turn-end" ? "回合完成" : "游戏结算"}</b></div>
       <div className="primary-actions">
         {actions.map((action) => (
-          <button key={action.type} aria-label={action.label} className={action.type === "ROLL_DICE" || action.type === "BUY_PROPERTY" || action.type === "UPGRADE_PROPERTY" ? "dice-button" : "secondary-action"} disabled={interactionLocked || !action.enabled || state.players[playerId].kind !== "human"} title={interactionLocked ? "棋子移动动画进行中" : state.players[playerId].kind !== "human" ? "AI 正在思考" : !action.enabled ? action.reason : undefined} onClick={() => onCommand(commandFor(action.type))}>
+          <button key={action.type} aria-label={action.label} className={`${action.type === "ROLL_DICE" || action.type === "BUY_PROPERTY" || action.type === "UPGRADE_PROPERTY" ? "dice-button" : "secondary-action"}${action.enabled === false && action.reason ? " action-denied" : ""}`} disabled={interactionLocked || (action.enabled === false && !action.reason) || state.players[playerId].kind !== "human"} title={interactionLocked ? "棋子移动动画进行中" : state.players[playerId].kind !== "human" ? "AI 正在思考" : !action.enabled ? action.reason : undefined} onClick={() => onCommand(commandFor(action.type))}>
             {action.type === "ROLL_DICE" && <span aria-hidden="true" className="dice-face">⚄</span>}{action.label}
           </button>
         ))}

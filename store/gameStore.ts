@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { createInitialState, dispatchCommand } from "@/game/reducer";
-import { loadGame, saveGame } from "@/game/save";
+import { clearAllSaves, loadGame, saveGame } from "@/game/save";
 import { playEventSound } from "@/game/audio";
 import type { UiSettings } from "@/components/SettingsDrawer";
 import type { EffectRequest, GameCommand, GameConfig, GameEvent, GameState, StockOrder } from "@/game/types";
@@ -40,12 +40,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   error: null,
   start(config) {
     const state = createInitialState(config);
+    // 只保留当前这局:新开时清理全部旧存档再写入
+    clearAllSaves();
     saveGame("auto", state);
-    set({ game: state, scene: "game", events: [], error: null });
+    set({ game: state, scene: "game", events: [...state.eventLog], error: null });
   },
   continueGame() {
     const loaded = loadGame("auto");
-    if (loaded.ok) set({ game: loaded.state, scene: loaded.state.phase === "game-over" ? "result" : "game", events: loaded.state.eventLog.slice(-8), error: null });
+    if (loaded.ok) set({ game: loaded.state, scene: loaded.state.phase === "game-over" ? "result" : "game", events: loaded.state.eventLog, error: null });
     else set({ error: loaded.message });
   },
   restart() { set({ scene: "start", game: null, events: [], error: null, inventoryOpen: false, stocksOpen: false }); },
@@ -57,7 +59,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     else {
       saveGame("auto", result.state);
       playEventSound(result.events, get().settings.sound);
-      set({ game: result.state, events: [...get().events, ...result.events].slice(-12), scene: result.state.phase === "game-over" ? "result" : "game", error: null });
+      set({ game: result.state, events: [...get().events, ...result.events], scene: result.state.phase === "game-over" ? "result" : "game", error: null });
     }
   },
   useEffect(request) {
@@ -66,7 +68,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (game.players[game.currentPlayerId].kind !== "human") return set({ error: "AI 行动中，请稍候" });
     const result = dispatchCommand(game, { type: "USE_EFFECT", playerId: request.playerId, effectId: request.effectId, targetId: request.target.id });
     if (result.error) set({ error: result.error.message });
-    else { saveGame("auto", result.state); playEventSound(result.events, get().settings.sound); set({ game: result.state, events: [...get().events, ...result.events].slice(-12), inventoryOpen: false, error: null }); }
+    else { saveGame("auto", result.state); playEventSound(result.events, get().settings.sound); set({ game: result.state, events: [...get().events, ...result.events], inventoryOpen: false, error: null }); }
   },
   trade(order) {
     const game = get().game;
@@ -74,7 +76,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (game.players[game.currentPlayerId].kind !== "human") return set({ error: "AI 行动中，请稍候" });
     const result = dispatchCommand(game, { type: order.side === "buy" ? "BUY_STOCK" : "SELL_STOCK", playerId: order.playerId, stockId: order.stockId, quantity: order.quantity });
     if (result.error) set({ error: result.error.message });
-    else { saveGame("auto", result.state); playEventSound(result.events, get().settings.sound); set({ game: result.state, events: [...get().events, ...result.events].slice(-12), error: null }); }
+    else { saveGame("auto", result.state); playEventSound(result.events, get().settings.sound); set({ game: result.state, events: [...get().events, ...result.events].slice(-40), error: null }); }
   },
   setInventory(open) { set({ inventoryOpen: open, stocksOpen: false, settingsOpen: false }); },
   setStocks(open) { set({ stocksOpen: open, inventoryOpen: false, settingsOpen: false }); },

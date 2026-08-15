@@ -14,3 +14,5 @@ dev-server*.log
 dev-server*.err
 .env*
 !.env.example
+dev.log
+tsconfig.tsbuildinfo

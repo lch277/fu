@@ -21,12 +21,14 @@ export function GameApp() {
     if (!game || scene !== "game" || game.phase === "game-over") return;
     const current = game.players[game.currentPlayerId];
     const automaticLanding = game.phase === "resolving" && !game.pending;
+    const automaticEndTurn = game.phase === "turn-end";
     const automaticAi = current.kind === "ai";
-    if (!automaticLanding && !automaticAi) return;
+    if (!automaticLanding && !automaticAi && !automaticEndTurn) return;
     const movementDuration = (game.lastRoll ?? 1) * 140 + 160;
-    const delay = automaticLanding ? Math.max(520, movementDuration) : 680;
+    const delay = automaticLanding ? Math.max(520, movementDuration) : automaticEndTurn ? 620 : 680;
     const timer = window.setTimeout(() => {
       if (automaticLanding) command({ type: "RESOLVE_LANDING", playerId: current.id });
+      else if (automaticEndTurn) command({ type: "END_TURN", playerId: current.id });
       else command(chooseAiCommand(game, current.id, current.difficulty ?? "standard"));
     }, delay / settings.speed);
     return () => window.clearTimeout(timer);

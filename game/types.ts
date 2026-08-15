@@ -162,6 +162,7 @@ export interface GameEvent {
   message: string;
   playerId?: PlayerId;
   amount?: number;
+  round?: number;
   data?: Record<string, string | number | boolean | null>;
 }
 

@@ -13,8 +13,11 @@ export function PlayerRail({ state }: { state: GameState }) {
       {ranked.map((player, index) => (
         <article className={`player-card ${player.id === state.currentPlayerId ? "current" : ""} ${!player.active ? "bankrupt" : ""}`} key={player.id} style={{ "--player-color": player.color } as React.CSSProperties}>
           <span className="rank-number">{index + 1}</span>
-          <span className="player-avatar">{marks[player.character]}</span>
-          <div className="player-summary"><b>{player.name}</b><small>{player.kind === "human" ? "真人玩家" : "AI 玩家"}</small></div>
+          <div className="player-id">
+            <span className="player-avatar">{marks[player.character]}</span>
+            <span className="player-kind">{player.kind === "human" ? "真人" : "AI"}</span>
+          </div>
+          <div className="player-summary"><b>{player.name}</b></div>
           <div className="player-money"><strong>¥{player.cash.toLocaleString("zh-CN")}</strong><small>总资产 ¥{getNetWorth(state, player.id).toLocaleString("zh-CN")}</small></div>
           {player.god && <span className={`god-badge ${player.god.tone}`}>{player.god.name} · {player.god.remainingTurns}</span>}
         </article>

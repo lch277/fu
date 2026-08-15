@@ -31,6 +31,5 @@ export function getLegalActions(state: GameState, playerId: PlayerId): LegalActi
     ];
   }
   if (state.phase === "resolving") return [{ type: "RESOLVE_LANDING", label: "结算落点", enabled: true }];
-  if (state.phase === "turn-end") return [{ type: "END_TURN", label: "结束回合", enabled: true }];
   return [];
 }

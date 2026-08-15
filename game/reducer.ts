@@ -58,7 +58,14 @@ export function createInitialState(config: GameConfig): GameState {
     hazards: [],
     lastRoll: null,
     pending: null,
-    eventLog: [],
+    // 开局第一条就是“轮到X行动”,保证第一个玩家的回合与其他回合一样有段头
+    eventLog: [{
+      id: "1-TURN_STARTED-0",
+      type: "TURN_STARTED",
+      message: `轮到${players[ids[0]].name}行动`,
+      playerId: ids[0],
+      round: 1,
+    }],
     winnerIds: [],
   };
 }

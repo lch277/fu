@@ -145,6 +145,7 @@ export function endTurn(state: GameState): CommandResult {
     type: "TURN_STARTED",
     message: `轮到${state.players[nextId].name}行动`,
     playerId: nextId,
+    round: nextRound,
   };
 
   const nextState: GameState = {

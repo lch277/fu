@@ -58,10 +58,17 @@ export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasPr
       app.canvas.setAttribute("aria-hidden", "true");
       host.appendChild(app.canvas);
 
+      const activeTicks = new Set<() => void>();
+      const stopAllTicks = () => {
+        activeTicks.forEach((fn) => app.ticker.remove(fn));
+        activeTicks.clear();
+      };
+
       const redraw = () => {
         const width = app.renderer.width / app.renderer.resolution;
         const height = app.renderer.height / app.renderer.resolution;
         if (!width || !height) return;
+        stopAllTicks();
         app.stage.removeChildren().forEach((child) => child.destroy({ children: true }));
         const layer = new Container();
         app.stage.addChild(layer);
@@ -120,19 +127,29 @@ export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasPr
             app.stage.addChild(burst);
             let frame = 0;
             const tick = () => {
+              if (disposed || !burst.scale) {
+                app.ticker?.remove(tick);
+                activeTicks.delete(tick);
+                return;
+              }
               frame += 1;
               burst.scale.set(1 + frame / 18);
               burst.alpha = Math.max(0, 0.65 - frame / 34);
               if (frame > 22) {
                 app.ticker.remove(tick);
+                activeTicks.delete(tick);
                 burst.destroy();
               }
             };
+            activeTicks.add(tick);
             app.ticker.add(tick);
           }, item.delay / speedRef.current);
           timers.push(timer);
         });
-        cancelPulse = () => timers.forEach(window.clearTimeout);
+        cancelPulse = () => {
+          timers.forEach(window.clearTimeout);
+          stopAllTicks();
+        };
       };
 
       redraw();

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createInitialState } from "@/game/reducer";
-import { loadGame, parseSave, saveGame, serializeSave } from "@/game/save";
+import { clearAllSaves, loadGame, parseSave, saveGame, serializeSave } from "@/game/save";
 import type { GameConfig } from "@/game/types";
 
 const config: GameConfig = {
@@ -89,5 +89,23 @@ describe("本地存档", () => {
     expect(loadGame("auto")).toEqual({ ok: true, state });
     expect(loadGame("slot-1")).toEqual({ ok: true, state: { ...state, round: 8 } });
     expect(loadGame("slot-2")).toEqual({ ok: false, message: "这个存档槽为空" });
+  });
+
+  it("新开局时清理全部旧存档(含旧版本 key)", () => {
+    const state = createInitialState(config);
+    saveGame("auto", state);
+    saveGame("slot-1", { ...state, round: 8 });
+    localStorage.setItem("richman-web:legacy-key", "旧版本数据");
+
+    clearAllSaves();
+
+    expect(localStorage.getItem("richman-web:auto")).toBeNull();
+    expect(localStorage.getItem("richman-web:slot-1")).toBeNull();
+    expect(localStorage.getItem("richman-web:legacy-key")).toBeNull();
+    // 无关 key 不受影响
+    expect(localStorage.getItem("unrelated-key")).toBeNull();
+    localStorage.setItem("unrelated-key", "x");
+    clearAllSaves();
+    expect(localStorage.getItem("unrelated-key")).toBe("x");
   });
 });
