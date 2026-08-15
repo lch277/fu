@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ActionDock } from "./ActionDock";
 import { BoardCanvas } from "./BoardCanvas";
+import { CenterDice } from "./CenterDice";
 import { EventFeed } from "./EventFeed";
 import { ModalLayer } from "./ModalLayer";
 import { PlayerRail } from "./PlayerRail";
@@ -88,9 +89,14 @@ export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenSt
       </header>
       <section className="game-layout">
         <div className="board-shell">
+          <div className="sky" aria-hidden="true">
+            <span className="sky-cloud sky-cloud-1" />
+            <span className="sky-cloud sky-cloud-2" />
+            <span className="sky-mountain sky-mountain-1" />
+            <span className="sky-mountain sky-mountain-2" />
+          </div>
           <div className="board-glow" />
           <div className="board-stage" aria-label="神州环游棋盘" aria-busy={interactionLocked}>
-            <div className="map-water" />
             <BoardCanvas state={state} events={events} animationSpeed={animationSpeed} />
             {state.map.nodes.map((node, index) => {
               const property = node.propertyId ? state.properties[node.propertyId] : null;
@@ -111,7 +117,7 @@ export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenSt
             <div className="map-landmark landmark-north">北京<br /><b>城楼</b></div>
             <div className="map-landmark landmark-east">上海<br /><b>明珠塔</b></div>
             <div className="map-landmark landmark-south">广州<br /><b>骑楼</b></div>
-            <div className="map-center-die"><span>{state.lastRoll ?? "?"}</span></div>
+            <CenterDice state={state} interactionLocked={interactionLocked} onCommand={onCommand} />
           </div>
         </div>
         <EventFeed events={events} players={state.players} turnOrder={state.turnOrder} />

@@ -59,8 +59,60 @@ describe("游戏界面", () => {
     expect(screen.getAllByText("孙小美").length).toBeGreaterThan(0);
     expect(screen.getByText("第 1 轮")).toBeInTheDocument();
     expect(screen.getAllByText("¥28,000").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "掷骰" }));
+    // 掷骰按钮已移入棋盘中心的 3D 骰子,底部操作栏不再出现
+    const dice = screen.getByRole("button", { name: "掷骰" });
+    expect(dice.classList.contains("center-dice")).toBe(true);
+    expect(screen.queryAllByRole("button", { name: "掷骰" })).toHaveLength(1);
+    fireEvent.click(dice);
     expect(onCommand).toHaveBeenCalledWith({ type: "ROLL_DICE", playerId: "p1" });
+  });
+
+  it("中心骰子:已掷出时标记点数,新回合回到待掷状态", () => {
+    const config: GameConfig = {
+      mode: "quick",
+      seed: 88,
+      maxRounds: 60,
+      targetNetWorth: 100_000,
+      players: [
+        { id: "p1", name: "孙小美", character: "sun-xiaomei", kind: "human", color: "#f05278" },
+        { id: "p2", name: "阿土伯", character: "a-tubo", kind: "ai", difficulty: "standard", color: "#f3b83f" },
+      ],
+    };
+    const rolled = { ...createInitialState(config), lastRoll: 5 };
+    const { rerender } = render(
+      <GameScreen state={rolled} events={[]} onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} />,
+    );
+    expect(screen.getByRole("button", { name: "掷骰" })).toHaveAttribute("data-rolled", "true");
+
+    const fresh = createInitialState(config);
+    rerender(
+      <GameScreen state={fresh} events={[]} onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} />,
+    );
+    expect(screen.getByRole("button", { name: "掷骰" })).toHaveAttribute("data-rolled", "false");
+  });
+
+  it("中心骰子:结算阶段与 AI 回合均不可掷骰", () => {
+    const config: GameConfig = {
+      mode: "quick",
+      seed: 88,
+      maxRounds: 60,
+      targetNetWorth: 100_000,
+      players: [
+        { id: "p1", name: "孙小美", character: "sun-xiaomei", kind: "human", color: "#f05278" },
+        { id: "p2", name: "阿土伯", character: "a-tubo", kind: "ai", difficulty: "standard", color: "#f3b83f" },
+      ],
+    };
+    const resolving = { ...createInitialState(config), phase: "resolving" as const };
+    const { rerender } = render(
+      <GameScreen state={resolving} events={[]} interactionLocked onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} />,
+    );
+    expect(screen.getByRole("button", { name: "掷骰" })).toBeDisabled();
+
+    const aiTurn = { ...createInitialState(config), currentPlayerId: "p2" as const };
+    rerender(
+      <GameScreen state={aiTurn} events={[]} onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} />,
+    );
+    expect(screen.getByRole("button", { name: "掷骰" })).toBeDisabled();
   });
 
   it("可以切换两倍动画速度", () => {

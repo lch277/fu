@@ -74,13 +74,6 @@ export function BoardCanvas({ state, events, animationSpeed = 1 }: BoardCanvasPr
         app.stage.addChild(layer);
         const geometry = createBoardGeometry(stateRef.current.map);
 
-        const island = new Graphics()
-          .roundRect(width * 0.19, height * 0.17, width * 0.62, height * 0.59, Math.min(width, height) * 0.08)
-          .fill({ color: 0xbce5ad, alpha: 0.42 })
-          .stroke({ color: 0xffffff, alpha: 0.38, width: 2 });
-        island.rotation = -0.035;
-        layer.addChild(island);
-
         const routeShadow = new Graphics();
         const route = new Graphics();
         geometry.segments.forEach((segment, index) => {

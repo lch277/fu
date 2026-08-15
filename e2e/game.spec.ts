@@ -18,7 +18,8 @@ test("从宽屏首页开局、掷骰并恢复自动存档", async ({ page }) => 
   await expect(page.getByLabel("神州环游棋盘")).toBeVisible();
   await expect(page.getByRole("button", { name: "掷骰", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "掷骰", exact: true }).click();
-  await expect(page.locator(".map-center-die span")).not.toHaveText("?");
+  // 棋盘中心的 3D 骰子显示真实点数
+  await expect(page.locator(".center-dice")).toHaveAttribute("data-rolled", "true");
   await expect.poll(() => page.evaluate(() => Boolean(localStorage.getItem("richman-web:v1:auto")))).toBe(true);
 
   await page.reload();
