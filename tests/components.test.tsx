@@ -277,3 +277,81 @@ describe("事件快讯", () => {
     expect(lines[3].querySelector(".feed-who")!.textContent).toBe("第10轮-孙小美：");
   });
 });
+
+describe("道具卡横排条", () => {
+  function makePlayers(count: 2 | 3): GameConfig["players"] {
+    const base = [
+      { id: "p1", name: "孙小美", character: "sun-xiaomei", kind: "human" as const, color: "#f05278" },
+      { id: "p2", name: "阿土伯", character: "a-tubo", kind: "ai" as const, difficulty: "standard" as const, color: "#f3b83f" },
+    ];
+    if (count === 3) base.push({ id: "p3", name: "钱夫人", character: "qian-furen", kind: "ai" as const, difficulty: "standard" as const, color: "#8f6bd8" });
+    return base;
+  }
+
+  function makeState(count: 2 | 3, cards: string[] = [], tools: string[] = []) {
+    const state = createInitialState({ mode: "quick", seed: 88, maxRounds: 60, targetNetWorth: 100_000, players: makePlayers(count) });
+    return { ...state, players: { ...state.players, p1: { ...state.players.p1, cards, tools } } };
+  }
+
+  it("直接在底部横排显示当前玩家的卡片与道具", () => {
+    render(<GameScreen state={makeState(2, ["stop-card", "tax-card"], ["roadblock"])} events={[]} onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} />);
+    const tray = screen.getByRole("group", { name: "道具卡" });
+    expect(tray).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /停留卡/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /查税卡/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /路障/ })).toBeInTheDocument();
+  });
+
+  it("无道具时显示空态提示", () => {
+    render(<GameScreen state={makeState(2)} events={[]} onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} />);
+    expect(screen.getByText("暂无道具")).toBeInTheDocument();
+  });
+
+  it("目标唯一时点击卡片直接使用", () => {
+    const onUse = vi.fn();
+    render(<GameScreen state={makeState(2, ["stop-card"])} events={[]} onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} onUse={onUse} />);
+    fireEvent.click(screen.getByRole("button", { name: /停留卡/ }));
+    expect(onUse).toHaveBeenCalledWith({ playerId: "p1", effectId: "stop-card", target: { type: "player", id: "p2" } });
+  });
+
+  it("多目标时弹出目标选择层,选中后使用", () => {
+    const onUse = vi.fn();
+    render(<GameScreen state={makeState(3, ["stop-card"])} events={[]} onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} onUse={onUse} />);
+    fireEvent.click(screen.getByRole("button", { name: /停留卡/ }));
+    expect(screen.getByRole("dialog", { name: "为停留卡选择目标" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /阿土伯/ }));
+    expect(onUse).toHaveBeenCalledWith({ playerId: "p1", effectId: "stop-card", target: { type: "player", id: "p2" } });
+  });
+});
+
+describe("遥控骰子选点数", () => {
+  it("点击遥控骰子弹出 1-6 点数面板,选择后带点数使用", () => {
+    const onUse = vi.fn();
+    const state = createInitialState({ mode: "quick", seed: 88, maxRounds: 60, targetNetWorth: 100_000, players: [
+      { id: "p1", name: "孙小美", character: "sun-xiaomei", kind: "human" as const, color: "#f05278" },
+      { id: "p2", name: "阿土伯", character: "a-tubo", kind: "ai" as const, difficulty: "standard" as const, color: "#f3b83f" },
+    ] });
+    const withDie = { ...state, players: { ...state.players, p1: { ...state.players.p1, tools: ["remote-die"] } } };
+    render(<GameScreen state={withDie} events={[]} onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} onUse={onUse} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /遥控骰子/ }));
+    expect(screen.getByRole("dialog", { name: "选择遥控骰子点数" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "5 点" }));
+    expect(onUse).toHaveBeenCalledWith({ playerId: "p1", effectId: "remote-die", target: { type: "player", id: "p1" }, value: 5 });
+  });
+
+  it("点数面板可以取消", () => {
+    const onUse = vi.fn();
+    const state = createInitialState({ mode: "quick", seed: 88, maxRounds: 60, targetNetWorth: 100_000, players: [
+      { id: "p1", name: "孙小美", character: "sun-xiaomei", kind: "human" as const, color: "#f05278" },
+      { id: "p2", name: "阿土伯", character: "a-tubo", kind: "ai" as const, difficulty: "standard" as const, color: "#f3b83f" },
+    ] });
+    const withDie = { ...state, players: { ...state.players, p1: { ...state.players.p1, tools: ["remote-die"] } } };
+    render(<GameScreen state={withDie} events={[]} onCommand={() => undefined} onOpenInventory={() => undefined} onOpenStocks={() => undefined} onUse={onUse} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /遥控骰子/ }));
+    fireEvent.click(screen.getByRole("button", { name: "取消选择点数" }));
+    expect(screen.queryByRole("dialog", { name: "选择遥控骰子点数" })).not.toBeInTheDocument();
+    expect(onUse).not.toHaveBeenCalled();
+  });
+});

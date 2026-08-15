@@ -230,7 +230,7 @@ export function applyEffect(state: GameState, request: EffectRequest): CommandRe
     case "immunity-card":
     case "revenge-card": {
       const statusId = request.effectId.replace("-card", "");
-      const status = { id: statusId, name: CARD_DEFINITIONS.concat(TOOL_DEFINITIONS).find((item) => item.id === request.effectId)?.name ?? "特殊状态", remainingTurns: 1, tone: "positive" as const };
+      const status: StatusEffect = { id: statusId, name: CARD_DEFINITIONS.concat(TOOL_DEFINITIONS).find((item) => item.id === request.effectId)?.name ?? "特殊状态", remainingTurns: 1, tone: "positive" as const, value: statusId === "remote-die" ? request.value : undefined };
       players = { ...players, [actor.id]: { ...consumed, statuses: [...consumed.statuses.filter((item) => item.id !== statusId), status] } };
       events.push(makeEvent(state, "STATUS_ADDED", `${actor.name}获得${status.name}`, actor.id));
       break;

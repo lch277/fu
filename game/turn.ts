@@ -31,7 +31,8 @@ export function rollAndMove(state: GameState, playerId: PlayerId): CommandResult
   const player = state.players[playerId];
   const hasStatus = (id: string) => player.statuses.some((status) => status.id === id);
   const diceCount = hasStatus("car") ? 3 : hasStatus("motorbike") ? 2 : 1;
-  const rolls = Array.from({ length: diceCount }, (_, index) => hasStatus("remote-die") && index === 0 ? 6 : rng.die());
+  const remoteDie = player.statuses.find((status) => status.id === "remote-die");
+  const rolls = Array.from({ length: diceCount }, (_, index) => remoteDie && index === 0 ? (remoteDie.value ?? 6) : rng.die());
   const roll = rolls.reduce((sum, value) => sum + value, 0);
   const nodeById = new Map(state.map.nodes.map((node) => [node.id, node]));
   let position = player.position;
@@ -40,6 +41,7 @@ export function rollAndMove(state: GameState, playerId: PlayerId): CommandResult
   let statuses = player.statuses.filter((status) => !["car", "motorbike", "remote-die", "reversed"].includes(status.id));
   let bomb = statuses.find((status) => status.id === "bomb");
   let hazardTriggered = false;
+  let hazardType: "roadblock" | "mine" | "bomb" | null = null;
   const reversed = hasStatus("reversed");
   const events: GameEvent[] = [event(state, "DICE_ROLLED", diceCount > 1 ? `${diceCount} 颗骰子共 ${roll} 点` : `掷出了 ${roll} 点`, 0, roll)];
 
@@ -71,6 +73,7 @@ export function rollAndMove(state: GameState, playerId: PlayerId): CommandResult
     const hazard = hazards.find((item) => item.nodeId === position && item.ownerId !== playerId);
     if (hazard) {
       hazards = hazards.filter((item) => item.id !== hazard.id);
+      hazardType = hazard.type;
       if (hazard.type === "mine" || hazard.type === "bomb") {
         const turns = hazard.type === "bomb" ? 3 : 2;
         statuses = [...statuses.filter((status) => status.id !== "hospitalized"), { id: "hospitalized", name: "住院", remainingTurns: turns, tone: "negative" }];
@@ -86,7 +89,8 @@ export function rollAndMove(state: GameState, playerId: PlayerId): CommandResult
       ...state,
       rngState: rng.state,
       lastRoll: roll,
-      phase: hazardTriggered ? "turn-end" : "resolving",
+      // 路障只是停止移动,仍需正常结算落点(过路费/购买/事件);地雷与炸弹住院则直接结束回合
+      phase: hazardTriggered && hazardType !== "roadblock" ? "turn-end" : "resolving",
       hazards,
       players: {
         ...state.players,

@@ -63,6 +63,8 @@ export interface StatusEffect {
   name: string;
   remainingTurns: number;
   tone: "positive" | "negative" | "neutral";
+  /** 遥控骰子等需要携带数值的状态 */
+  value?: number;
 }
 
 export interface GodState {
@@ -194,6 +196,8 @@ export interface EffectRequest {
   playerId: PlayerId;
   effectId: string;
   target: TargetRef;
+  /** 遥控骰子等需要携带数值的效果 */
+  value?: number;
 }
 
 export interface ContentDefinition {

@@ -121,8 +121,27 @@ describe("完整回合联动", () => {
 
     expect(result.state.players.p1.position).toBe("beijing-1");
     expect(result.state.hazards).toEqual([]);
-    expect(result.state.phase).toBe("turn-end");
+    expect(result.state.phase).toBe("resolving");
     expect(result.events).toContainEqual(expect.objectContaining({ type: "HAZARD_TRIGGERED" }));
+  });
+
+  it("路障停止后仍正常结算落点(踩中他人地产需付过路费)", () => {
+    const base = createInitialState({ ...config, seed: 1 });
+    const propertyId = base.map.nodes.find((node) => node.id === "beijing-1")!.propertyId!;
+    const state: GameState = {
+      ...base,
+      hazards: [{ id: "h1", nodeId: "beijing-1", ownerId: "p2", type: "roadblock" }],
+      properties: { ...base.properties, [propertyId]: { ...base.properties[propertyId], ownerId: "p2" } },
+    };
+
+    const rolled = dispatchCommand(state, { type: "ROLL_DICE", playerId: "p1" });
+    expect(rolled.state.players.p1.position).toBe("beijing-1");
+    expect(rolled.state.phase).toBe("resolving");
+
+    const settled = dispatchCommand(rolled.state, { type: "RESOLVE_LANDING", playerId: "p1" });
+    expect(settled.events).toContainEqual(expect.objectContaining({ type: "TOLL_PAID", playerId: "p1" }));
+    expect(settled.state.players.p1.cash).toBeLessThan(rolled.state.players.p1.cash);
+    expect(settled.state.players.p2.cash).toBeGreaterThan(rolled.state.players.p2.cash);
   });
 
   it("经过出发站会获得通行奖金", () => {

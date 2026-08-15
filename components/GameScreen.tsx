@@ -6,15 +6,16 @@ import { EventFeed } from "./EventFeed";
 import { ModalLayer } from "./ModalLayer";
 import { PlayerRail } from "./PlayerRail";
 import { calculateToll } from "@/game/economy";
-import type { GameCommand, GameEvent, GameState } from "@/game/types";
+import type { EffectRequest, GameCommand, GameEvent, GameState } from "@/game/types";
 
 interface GameScreenProps {
   state: GameState;
   events: GameEvent[];
   onCommand(command: GameCommand): void;
-  onOpenInventory(): void;
+  onOpenInventory?(): void;
   onOpenStocks(): void;
   onOpenSettings?(): void;
+  onUse?(request: EffectRequest): void;
   animationSpeed?: 1 | 2 | 4;
   interactionLocked?: boolean;
 }
@@ -42,7 +43,7 @@ export const POPUP_EVENT_TYPES = new Set([
   "GAME_OVER",
 ]);
 
-export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenStocks, onOpenSettings, animationSpeed = 1, interactionLocked = false }: GameScreenProps) {
+export function GameScreen({ state, events, onCommand, onOpenStocks, onOpenSettings, onUse, animationSpeed = 1, interactionLocked = false }: GameScreenProps) {
   const [popups, setPopups] = useState<Record<string, NodePopup[]>>({});
   const handledEventIds = useRef<Set<string>>(new Set());
 
@@ -122,7 +123,7 @@ export function GameScreen({ state, events, onCommand, onOpenInventory, onOpenSt
         </div>
         <EventFeed events={events} players={state.players} turnOrder={state.turnOrder} />
       </section>
-      <ActionDock state={state} interactionLocked={interactionLocked} onCommand={onCommand} onOpenInventory={onOpenInventory} onOpenStocks={onOpenStocks} />
+      <ActionDock state={state} interactionLocked={interactionLocked} onCommand={onCommand} onOpenStocks={onOpenStocks} onUse={onUse ?? (() => undefined)} />
       <ModalLayer state={state} onCommand={onCommand} />
     </main>
   );

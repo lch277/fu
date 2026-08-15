@@ -202,3 +202,33 @@ describe("持续状态与特殊设施", () => {
     expect(results[0].phase).toBe("turn-end");
   });
 });
+
+describe("遥控骰子", () => {
+  it("使用遥控骰子时记录所选点数", () => {
+    const state = withPlayer(createInitialState(config), { tools: ["remote-die"] });
+    const result = applyEffect(state, {
+      playerId: "p1",
+      effectId: "remote-die",
+      target: { type: "player", id: "p1" },
+      value: 4,
+    });
+
+    expect(result.state.players.p1.statuses).toContainEqual(expect.objectContaining({ id: "remote-die", value: 4 }));
+    expect(result.state.players.p1.tools).not.toContain("remote-die");
+  });
+
+  it("掷骰时第一颗骰子使用所选点数并消耗状态", () => {
+    const base = createInitialState(config);
+    const state: GameState = {
+      ...base,
+      players: {
+        ...base.players,
+        p1: { ...base.players.p1, statuses: [{ id: "remote-die", name: "遥控骰子", remainingTurns: 1, tone: "positive", value: 4 }] },
+      },
+    };
+
+    const result = dispatchCommand(state, { type: "ROLL_DICE", playerId: "p1" });
+    expect(result.state.lastRoll).toBe(4);
+    expect(result.state.players.p1.statuses).not.toContainEqual(expect.objectContaining({ id: "remote-die" }));
+  });
+});

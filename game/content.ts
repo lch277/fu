@@ -27,7 +27,7 @@ export const TOOL_DEFINITIONS: ContentDefinition[] = [
   { id: "machine-doll", name: "机器娃娃", description: "清除前方六格道路障碍", icon: "机" },
   { id: "motorbike", name: "机车", description: "接下来可以使用两颗骰子", icon: "骑" },
   { id: "car", name: "汽车", description: "接下来可以使用三颗骰子", icon: "车" },
-  { id: "remote-die", name: "遥控骰子", description: "让下一次第一颗骰子固定为 6 点", icon: "控" },
+  { id: "remote-die", name: "遥控骰子", description: "选择下一次第一颗骰子的点数", icon: "控" },
 ];
 
 export const GOD_DEFINITIONS: ContentDefinition[] = [
