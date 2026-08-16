@@ -34,6 +34,7 @@
       "!node_modules/**"
     ],
     "win": {
+      "icon": "build/icon.png",
       "target": "portable",
       "artifactName": "ShenZhou-RichMan-${version}.exe"
     }
