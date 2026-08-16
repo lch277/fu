@@ -1,9 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+// dev server 冷启动时首个请求可能命中未编译完的页面，等待 React 事件绑定完成再操作。
+async function waitForHydration(page: Page) {
+  await page.waitForFunction(() => {
+    const btn = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.includes("开始掷骰"));
+    return !!btn && Object.keys(btn).some((k) => k.startsWith("__reactProps"));
+  });
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await waitForHydration(page);
 });
 
 test("从宽屏首页开局、掷骰并恢复自动存档", async ({ page }) => {

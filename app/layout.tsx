@@ -2,7 +2,22 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
+const STATIC_METADATA: Metadata = {
+  title: "神州大富翁｜掷出你的财富传奇",
+  description: "高清手办风的本地多人经营游戏：买地产、炒股票、用卡片，与好友或 AI 环游神州。",
+  icons: { icon: "./favicon.svg" },
+  openGraph: {
+    title: "神州大富翁",
+    description: "掷出你的财富传奇",
+    images: [{ url: new URL("/og.png", "https://example.com").toString(), width: 1733, height: 909, alt: "神州大富翁游戏棋盘" }],
+  },
+  twitter: { card: "summary_large_image", title: "神州大富翁", description: "掷出你的财富传奇", images: [new URL("/og.png", "https://example.com").toString()] },
+};
+
 export async function generateMetadata(): Promise<Metadata> {
+  // Electron 静态导出时无 HTTP 上下文，使用静态 metadata 避免依赖 next/headers。
+  if (process.env.ELECTRON_BUILD === "1") return STATIC_METADATA;
+
   const incoming = await headers();
   const host = incoming.get("host") ?? "localhost:3000";
   const protocol = incoming.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");

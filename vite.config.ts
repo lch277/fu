@@ -43,7 +43,11 @@ export default defineConfig(async () => {
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
+  // Electron 静态导出需要相对资源路径（file:// 协议下 /assets/... 会指向磁盘根）。
+  const isElectronBuild = process.env.ELECTRON_BUILD === "1";
+
   return {
+    base: isElectronBuild ? "./" : undefined,
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

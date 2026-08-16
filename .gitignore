@@ -16,3 +16,5 @@ dev-server*.err
 !.env.example
 dev.log
 tsconfig.tsbuildinfo
+release/
+.zcode/

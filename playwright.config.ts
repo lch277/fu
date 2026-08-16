@@ -15,6 +15,7 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], channel: "msedge", viewport: { width: 1440, height: 900 } },
     },
   ],
+  testIgnore: /electron-smoke\.spec\.ts/,
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
