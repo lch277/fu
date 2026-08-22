@@ -4,6 +4,7 @@ import { BoardCanvas } from "./BoardCanvas";
 import { CenterDice } from "./CenterDice";
 import { EventFeed } from "./EventFeed";
 import { ModalLayer } from "./ModalLayer";
+import { NodeArt } from "./nodeArt";
 import { PlayerRail } from "./PlayerRail";
 import { calculateToll } from "@/game/economy";
 import type { EffectRequest, GameCommand, GameEvent, GameState } from "@/game/types";
@@ -102,6 +103,7 @@ export function GameScreen({ state, events, onCommand, onOpenStocks, onOpenSetti
             {state.map.nodes.map((node, index) => {
               const property = node.propertyId ? state.properties[node.propertyId] : null;
               return <div key={node.id} className={`map-node node-${node.type}`} style={{ left: `${node.x / 10}%`, top: `${node.y / 7}%`, "--node-index": index } as React.CSSProperties} title={node.name}>
+                <div className="node-art" aria-hidden="true"><NodeArt node={node} /></div>
                 <span>{node.name}</span>{property?.ownerId && <i style={{ background: state.players[property.ownerId].color }} />}{property && property.level > 0 && <b>{"楼".repeat(Math.min(3, property.level))}</b>}
                 {property && !property.ownerId && <small className="node-fee price">¥{property.price.toLocaleString("zh-CN")}</small>}
                 {property?.ownerId && <small className="node-fee toll">过路 ¥{calculateToll(state, property.id).toLocaleString("zh-CN")}</small>}
@@ -115,9 +117,6 @@ export function GameScreen({ state, events, onCommand, onOpenStocks, onOpenSetti
               const node = state.map.nodes.find((item) => item.id === player.position)!;
               return <div className={`board-pawn pawn-index-${index} ${id === state.currentPlayerId ? "active" : ""}`} key={id} style={{ left: `${node.x / 10 + index * 0.7}%`, top: `${node.y / 7 - 5}%`, background: player.color } as React.CSSProperties}><span>{player.name.slice(-1)}</span></div>;
             })}
-            <div className="map-landmark landmark-north">北京<br /><b>城楼</b></div>
-            <div className="map-landmark landmark-east">上海<br /><b>明珠塔</b></div>
-            <div className="map-landmark landmark-south">广州<br /><b>骑楼</b></div>
             <CenterDice state={state} interactionLocked={interactionLocked} onCommand={onCommand} />
           </div>
         </div>
